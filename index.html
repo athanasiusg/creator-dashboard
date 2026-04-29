@@ -1008,8 +1008,8 @@ async function syncFromDB() {
 async function pushAudienceToDB(entry) {
   return sbInsert('audience', {
     id: entry.id, platform: entry.platform, followers: entry.followers,
-    growth: entry.growth, reach: entry.reach || 0, impressions: entry.impressions || 0,
-    date: entry.date, from_import: entry._fromImport || false
+    growth: entry.growth || 0, reach: entry.reach || 0,
+    impressions: entry.impressions || 0, date: entry.date
   });
 }
 
@@ -1018,7 +1018,7 @@ async function pushContentToDB(post) {
     id: post.id, platform: post.platform, title: post.title,
     views: post.views || 0, likes: post.likes || 0, comments: post.comments || 0,
     shares: post.shares || 0, saves: post.saves || 0, eng_rate: post.engRate || 0,
-    date: post.date, from_import: post._fromImport || false
+    date: post.date
   });
 }
 
@@ -1034,7 +1034,7 @@ async function upsertBulkContent(posts) {
     id: p.id, platform: p.platform, title: p.title,
     views: p.views||0, likes: p.likes||0, comments: p.comments||0,
     shares: p.shares||0, saves: p.saves||0, eng_rate: p.engRate||0,
-    date: p.date, from_import: p._fromImport||false
+    date: p.date
   }));
   return sbUpsert('content', rows);
 }
@@ -1043,7 +1043,7 @@ async function upsertBulkAudience(entries) {
   const rows = entries.map(e => ({
     id: e.id, platform: e.platform, followers: e.followers,
     growth: e.growth||0, reach: e.reach||0, impressions: e.impressions||0,
-    date: e.date, from_import: e._fromImport||false
+    date: e.date
   }));
   return sbUpsert('audience', rows);
 }
