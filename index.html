@@ -849,77 +849,84 @@
       </div>
     </div>
 
-    <!-- ── INSTAGRAM IMPORT ── -->
+    <!-- ── INSTAGRAM LIVE SYNC ── -->
     <div class="content" id="tab-instagram">
       <div class="section-header">
-        <div class="section-title">Instagram Import</div>
-        <div class="section-sub">Upload your Instagram data ZIP to auto-populate your dashboard</div>
+        <div class="section-title">Instagram Live Sync</div>
+        <div class="section-sub">Connect your Instagram via Meta API · token stored locally only</div>
       </div>
 
-      <!-- Drop Zone -->
-      <div id="ig-dropzone" style="
-        border: 2px dashed var(--border-bright);
-        border-radius: var(--radius);
-        padding: 48px;
-        text-align: center;
-        cursor: pointer;
-        transition: all 0.2s;
-        background: var(--bg-2);
-        margin-bottom: 24px;
-      " onclick="document.getElementById('ig-zip-input').click()"
-         ondragover="event.preventDefault();this.style.borderColor='var(--accent)';this.style.background='var(--accent-dim)'"
-         ondragleave="this.style.borderColor='var(--border-bright)';this.style.background='var(--bg-2)'"
-         ondrop="handleZipDrop(event)">
-        <div style="font-size:40px;margin-bottom:14px;opacity:0.5">📦</div>
-        <div style="font-size:16px;font-weight:700;margin-bottom:6px">Drop your Instagram ZIP here</div>
-        <div style="font-size:12px;color:var(--text-2);font-family:var(--mono)">or click to browse · instagram-[username]-[date].zip</div>
-        <input type="file" id="ig-zip-input" accept=".zip" style="display:none" onchange="handleZipFile(this.files[0])" />
-      </div>
-
-      <!-- What gets imported -->
+      <!-- Token Input -->
       <div class="card" style="margin-bottom:20px">
-        <div class="card-header"><div class="card-title">What gets imported</div></div>
+        <div class="card-header">
+          <div class="card-title">🔑 Access Token</div>
+          <span id="ig-token-status" style="font-size:12px;font-family:var(--mono);color:var(--text-2)">Not connected</span>
+        </div>
         <div class="card-body">
-          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px">
-            <div style="padding:14px;background:var(--bg-1);border-radius:var(--radius-sm);border:1px solid var(--border)">
-              <div style="color:var(--accent);font-size:18px;margin-bottom:6px">✓</div>
-              <div style="font-size:13px;font-weight:600">Follower Count</div>
-              <div style="font-size:11px;color:var(--text-2);font-family:var(--mono);margin-top:3px">Total + who followed when</div>
-            </div>
-            <div style="padding:14px;background:var(--bg-1);border-radius:var(--radius-sm);border:1px solid var(--border)">
-              <div style="color:var(--accent);font-size:18px;margin-bottom:6px">✓</div>
-              <div style="font-size:13px;font-weight:600">Following Count</div>
-              <div style="font-size:11px;color:var(--text-2);font-family:var(--mono);margin-top:3px">How many you follow back</div>
-            </div>
-            <div style="padding:14px;background:var(--bg-1);border-radius:var(--radius-sm);border:1px solid var(--border)">
-              <div style="color:var(--accent);font-size:18px;margin-bottom:6px">✓</div>
-              <div style="font-size:13px;font-weight:600">Post History</div>
-              <div style="font-size:11px;color:var(--text-2);font-family:var(--mono);margin-top:3px">Titles + dates of all posts</div>
-            </div>
-            <div style="padding:14px;background:var(--bg-1);border-radius:var(--radius-sm);border:1px solid var(--border)">
-              <div style="color:var(--accent);font-size:18px;margin-bottom:6px">✓</div>
-              <div style="font-size:13px;font-weight:600">Net Growth</div>
-              <div style="font-size:11px;color:var(--text-2);font-family:var(--mono);margin-top:3px">Followers gained vs unfollowed</div>
-            </div>
-            <div style="padding:14px;background:var(--bg-1);border-radius:var(--radius-sm);border:1px solid var(--border)">
-              <div style="color:var(--red);font-size:18px;margin-bottom:6px">✕</div>
-              <div style="font-size:13px;font-weight:600">Likes / Views</div>
-              <div style="font-size:11px;color:var(--text-2);font-family:var(--mono);margin-top:3px">Not in Instagram export</div>
-            </div>
-            <div style="padding:14px;background:var(--bg-1);border-radius:var(--radius-sm);border:1px solid var(--border)">
-              <div style="color:var(--red);font-size:18px;margin-bottom:6px">✕</div>
-              <div style="font-size:13px;font-weight:600">Reach / Impressions</div>
-              <div style="font-size:11px;color:var(--text-2);font-family:var(--mono);margin-top:3px">Not in Instagram export</div>
-            </div>
+          <div style="margin-bottom:12px;font-size:13px;color:var(--text-1);line-height:1.6">
+            Paste your token from the <a href="https://developers.facebook.com/tools/explorer" target="_blank" style="color:var(--accent)">Graph API Explorer</a>. It's stored only in your browser — never sent anywhere except directly to Meta's API.
           </div>
-          <div style="margin-top:14px;padding:12px 16px;background:var(--gold-dim);border:1px solid rgba(240,192,96,0.2);border-radius:var(--radius-sm);font-size:12px;color:var(--gold);font-family:var(--mono)">
-            ⚡ After import, go to the Content tab to add likes/views manually for your posts — Instagram keeps that data locked.
+          <div style="display:flex;gap:10px;align-items:center">
+            <input class="form-input" type="password" id="ig-token-input" placeholder="Paste your access token here..." style="flex:1;font-family:var(--mono);font-size:12px" />
+            <button class="btn btn-accent" onclick="saveAndSync()">Connect & Sync</button>
+            <button class="btn btn-ghost" onclick="clearToken()">Clear</button>
+          </div>
+          <div style="margin-top:10px;font-size:11px;color:var(--text-2);font-family:var(--mono)">
+            Token expires in ~1 hour. Come back here to paste a fresh one anytime.
           </div>
         </div>
       </div>
 
+      <!-- Live Profile Card -->
+      <div id="ig-profile-card" style="display:none;margin-bottom:20px">
+        <div class="stat-grid" id="ig-live-stats"></div>
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Live Profile</div>
+            <button class="btn btn-ghost btn-sm" onclick="syncInstagram()">↻ Refresh</button>
+          </div>
+          <div class="card-body" id="ig-profile-body"></div>
+        </div>
+      </div>
+
+      <!-- Recent Posts -->
+      <div id="ig-posts-card" style="display:none">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Recent Posts</div>
+            <button class="btn btn-accent btn-sm" onclick="importPostsToDashboard()">↓ Import to Content Tab</button>
+          </div>
+          <div class="card-body" style="padding:0">
+            <div class="table-wrap" id="ig-posts-table"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ZIP fallback -->
+      <div style="margin-top:24px">
+        <div class="divider"></div>
+        <div style="margin:16px 0 12px;font-size:12px;color:var(--text-2);font-family:var(--mono);text-align:center">OR IMPORT FROM ZIP FILE</div>
+        <div id="ig-dropzone" style="
+          border: 2px dashed var(--border-bright);
+          border-radius: var(--radius);
+          padding: 32px;
+          text-align: center;
+          cursor: pointer;
+          transition: all 0.2s;
+          background: var(--bg-2);
+        " onclick="document.getElementById('ig-zip-input').click()"
+           ondragover="event.preventDefault();this.style.borderColor='var(--accent)';this.style.background='var(--accent-dim)'"
+           ondragleave="this.style.borderColor='var(--border-bright)';this.style.background='var(--bg-2)'"
+           ondrop="handleZipDrop(event)">
+          <div style="font-size:28px;margin-bottom:10px;opacity:0.4">📦</div>
+          <div style="font-size:14px;font-weight:700;margin-bottom:4px">Drop Instagram ZIP here</div>
+          <div style="font-size:11px;color:var(--text-2);font-family:var(--mono)">Fallback if token isn't working</div>
+          <input type="file" id="ig-zip-input" accept=".zip" style="display:none" onchange="handleZipFile(this.files[0])" />
+        </div>
+      </div>
+
       <!-- Import log -->
-      <div class="card" id="ig-result-card" style="display:none">
+      <div class="card" id="ig-result-card" style="display:none;margin-top:20px">
         <div class="card-header">
           <div class="card-title">Import Results</div>
           <button class="btn btn-ghost btn-sm" onclick="document.getElementById('ig-result-card').style.display='none'">✕ Close</button>
@@ -1100,6 +1107,14 @@ function switchTab(tab) {
   if (tab === 'overview') renderOverview();
   if (tab === 'insights') renderInsights();
   if (tab === 'export') renderTemplates();
+  if (tab === 'instagram') {
+    const token = localStorage.getItem(IG_TOKEN_KEY);
+    if (token) {
+      document.getElementById('ig-token-status').textContent = '✓ Token saved';
+      document.getElementById('ig-token-status').style.color = 'var(--accent)';
+      syncInstagram();
+    }
+  }
 }
 
 document.querySelectorAll('.nav-item').forEach(el => {
@@ -1688,8 +1703,195 @@ function handleImport(event) {
 }
 
 // ═══════════════════════════════════════════════════
-// INSTAGRAM ZIP IMPORT
+// INSTAGRAM LIVE API SYNC
 // ═══════════════════════════════════════════════════
+const IG_USER_ID = '17841400647283692';
+const IG_TOKEN_KEY = 'creator_os_ig_token';
+
+let igLivePosts = [];
+
+function saveAndSync() {
+  const token = document.getElementById('ig-token-input').value.trim();
+  if (!token) { toast('⚠ Paste your access token first', 'error'); return; }
+  localStorage.setItem(IG_TOKEN_KEY, token);
+  document.getElementById('ig-token-input').value = '';
+  syncInstagram();
+}
+
+function clearToken() {
+  localStorage.removeItem(IG_TOKEN_KEY);
+  document.getElementById('ig-token-status').textContent = 'Not connected';
+  document.getElementById('ig-token-status').style.color = 'var(--text-2)';
+  document.getElementById('ig-profile-card').style.display = 'none';
+  document.getElementById('ig-posts-card').style.display = 'none';
+  toast('Token cleared');
+}
+
+async function syncInstagram() {
+  const token = localStorage.getItem(IG_TOKEN_KEY);
+  if (!token) { toast('⚠ No token saved — paste one first', 'error'); return; }
+
+  const status = document.getElementById('ig-token-status');
+  status.textContent = 'Syncing...';
+  status.style.color = 'var(--gold)';
+  toast('⏳ Fetching Instagram data...');
+
+  try {
+    // ── Fetch profile
+    const profileRes = await fetch(
+      `https://graph.facebook.com/v25.0/${IG_USER_ID}?fields=name,biography,followers_count,follows_count,media_count,profile_picture_url,website&access_token=${token}`
+    );
+    const profile = await profileRes.json();
+
+    if (profile.error) {
+      status.textContent = 'Token expired';
+      status.style.color = 'var(--red)';
+      toast('⚠ Token expired — generate a new one in Graph API Explorer', 'error');
+      return;
+    }
+
+    // ── Fetch recent media
+    const mediaRes = await fetch(
+      `https://graph.facebook.com/v25.0/${IG_USER_ID}/media?fields=id,caption,media_type,timestamp,like_count,comments_count,thumbnail_url,media_url&limit=20&access_token=${token}`
+    );
+    const media = await mediaRes.json();
+
+    status.textContent = '✓ Connected · ' + new Date().toLocaleTimeString();
+    status.style.color = 'var(--accent)';
+
+    // ── Render profile stats
+    const prevFollowers = state.audience.find(a => a.platform === 'Instagram' && a._fromImport)?._prevFollowers || profile.followers_count;
+    const growth = profile.followers_count - prevFollowers;
+
+    document.getElementById('ig-live-stats').innerHTML = `
+      <div class="stat-card">
+        <div class="stat-label">Followers</div>
+        <div class="stat-value" style="color:var(--accent)">${profile.followers_count?.toLocaleString() || '—'}</div>
+        <div class="stat-meta">live from Instagram</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Following</div>
+        <div class="stat-value">${profile.follows_count?.toLocaleString() || '—'}</div>
+        <div class="stat-meta">accounts</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Total Posts</div>
+        <div class="stat-value">${profile.media_count?.toLocaleString() || '—'}</div>
+        <div class="stat-meta">all time</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Ratio</div>
+        <div class="stat-value">${profile.follows_count ? (profile.followers_count / profile.follows_count).toFixed(2) : '—'}</div>
+        <div class="stat-meta">followers / following</div>
+      </div>
+    `;
+
+    document.getElementById('ig-profile-body').innerHTML = `
+      <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+        ${profile.profile_picture_url ? `<img src="${profile.profile_picture_url}" style="width:56px;height:56px;border-radius:50%;border:2px solid var(--border-bright)" />` : ''}
+        <div>
+          <div style="font-size:16px;font-weight:700">${profile.name || '—'}</div>
+          <div style="font-size:12px;color:var(--text-2);font-family:var(--mono);margin-top:3px">${profile.biography || ''}</div>
+          ${profile.website ? `<a href="${profile.website}" target="_blank" style="font-size:11px;color:var(--accent);font-family:var(--mono)">${profile.website}</a>` : ''}
+        </div>
+        <div style="margin-left:auto">
+          <button class="btn btn-ghost btn-sm" onclick="pushToAudience(${profile.followers_count}, ${profile.follows_count})">↓ Push to Audience Tab</button>
+        </div>
+      </div>
+    `;
+
+    document.getElementById('ig-profile-card').style.display = 'block';
+
+    // ── Render posts
+    if (media.data && media.data.length) {
+      igLivePosts = media.data;
+      const rows = media.data.map(p => {
+        const date = p.timestamp ? new Date(p.timestamp).toLocaleDateString() : '—';
+        const caption = p.caption ? p.caption.slice(0, 50) + (p.caption.length > 50 ? '...' : '') : 'No caption';
+        const likes = p.like_count ?? '—';
+        const comments = p.comments_count ?? '—';
+        return `
+          <tr>
+            <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis">${caption}</td>
+            <td><span class="badge badge-ig">${p.media_type}</span></td>
+            <td style="color:var(--text-2);font-family:var(--mono)">${likes}</td>
+            <td style="color:var(--text-2);font-family:var(--mono)">${comments}</td>
+            <td style="color:var(--text-2);font-family:var(--mono);font-size:11px">${date}</td>
+          </tr>
+        `;
+      }).join('');
+
+      document.getElementById('ig-posts-table').innerHTML = `
+        <table>
+          <thead><tr><th>Caption</th><th>Type</th><th>Likes</th><th>Comments</th><th>Date</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      `;
+      document.getElementById('ig-posts-card').style.display = 'block';
+    }
+
+    toast('✓ Instagram synced!', 'success');
+
+  } catch(err) {
+    status.textContent = 'Error';
+    status.style.color = 'var(--red)';
+    toast('⚠ Sync failed — check your token', 'error');
+    console.error(err);
+  }
+}
+
+function pushToAudience(followers, following) {
+  const existing = state.audience.findIndex(a => a.platform === 'Instagram' && a._fromImport);
+  const prevFollowers = existing >= 0 ? state.audience[existing].followers : followers;
+  const entry = {
+    id: existing >= 0 ? state.audience[existing].id : uid(),
+    platform: 'Instagram',
+    followers,
+    growth: followers - prevFollowers,
+    reach: 0,
+    impressions: 0,
+    date: today(),
+    _fromImport: true,
+    _prevFollowers: prevFollowers,
+    _following: following
+  };
+  if (existing >= 0) state.audience[existing] = entry;
+  else state.audience.push(entry);
+  save();
+  renderAudienceTable();
+  renderOverview();
+  toast('✓ Pushed to Audience tab', 'success');
+}
+
+function importPostsToDashboard() {
+  if (!igLivePosts.length) { toast('⚠ No posts to import', 'error'); return; }
+  state.content = state.content.filter(c => !c._fromImport);
+  igLivePosts.forEach(p => {
+    const views = 0;
+    const likes = p.like_count || 0;
+    const comments = p.comments_count || 0;
+    const post = {
+      id: uid(),
+      platform: 'Instagram',
+      title: p.caption ? p.caption.slice(0, 60) : 'Untitled post',
+      views, likes, comments, shares: 0, saves: 0,
+      date: p.timestamp ? new Date(p.timestamp).toISOString().split('T')[0] : today(),
+      engRate: 0,
+      _fromImport: true,
+      _type: p.media_type
+    };
+    state.content.push(post);
+  });
+  save();
+  renderContentTable();
+  renderOverview();
+  toast(`✓ ${igLivePosts.length} posts imported to Content tab`, 'success');
+  switchTab('content');
+}
+
+// Auto-sync on Instagram tab open if token exists
+
+
 function handleZipDrop(event) {
   event.preventDefault();
   const dz = document.getElementById('ig-dropzone');
