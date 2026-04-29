@@ -1750,9 +1750,9 @@ async function syncInstagram() {
       return;
     }
 
-    // ── Fetch recent media
+    // ── Fetch recent media with insights
     const mediaRes = await fetch(
-      `https://graph.facebook.com/v25.0/${IG_USER_ID}/media?fields=id,caption,media_type,timestamp,like_count,comments_count,thumbnail_url,media_url&limit=20&access_token=${token}`
+      `https://graph.facebook.com/v25.0/${IG_USER_ID}/media?fields=id,caption,media_type,timestamp,like_count,comments_count,insights.metric(impressions,reach,saved,shares)&limit=20&access_token=${token}`
     );
     const media = await mediaRes.json();
 
@@ -1804,18 +1804,38 @@ async function syncInstagram() {
 
     // ── Render posts
     if (media.data && media.data.length) {
-      igLivePosts = media.data;
-      const rows = media.data.map(p => {
+      igLivePosts = media.data.map(p => {
+        const ins = p.insights?.data || [];
+        const getMetric = name => ins.find(i => i.name === name)?.values?.[0]?.value || 0;
+        return {
+          ...p,
+          impressions: getMetric('impressions'),
+          reach: getMetric('reach'),
+          saved: getMetric('saved'),
+          shares: getMetric('shares'),
+        };
+      });
+
+      const rows = igLivePosts.map(p => {
         const date = p.timestamp ? new Date(p.timestamp).toLocaleDateString() : '—';
         const caption = p.caption ? p.caption.slice(0, 50) + (p.caption.length > 50 ? '...' : '') : 'No caption';
-        const likes = p.like_count ?? '—';
-        const comments = p.comments_count ?? '—';
+        const likes = p.like_count || 0;
+        const comments = p.comments_count || 0;
+        const impressions = p.impressions || 0;
+        const saves = p.saved || 0;
+        const shares = p.shares || 0;
+        const eng = impressions > 0 ? (((likes + comments + saves + shares) / impressions) * 100).toFixed(2) : '—';
+        const engColor = impressions > 0 ? (parseFloat(eng) >= 5 ? 'var(--accent)' : parseFloat(eng) >= 2 ? 'var(--gold)' : 'var(--red)') : 'var(--text-2)';
         return `
           <tr>
-            <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis">${caption}</td>
+            <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis">${caption}</td>
             <td><span class="badge badge-ig">${p.media_type}</span></td>
-            <td style="color:var(--text-2);font-family:var(--mono)">${likes}</td>
-            <td style="color:var(--text-2);font-family:var(--mono)">${comments}</td>
+            <td style="color:var(--text-1);font-family:var(--mono)">${impressions.toLocaleString()}</td>
+            <td style="color:var(--text-1);font-family:var(--mono)">${likes.toLocaleString()}</td>
+            <td style="color:var(--text-1);font-family:var(--mono)">${comments.toLocaleString()}</td>
+            <td style="color:var(--text-1);font-family:var(--mono)">${saves.toLocaleString()}</td>
+            <td style="color:var(--text-1);font-family:var(--mono)">${shares.toLocaleString()}</td>
+            <td style="color:${engColor};font-family:var(--mono);font-weight:600">${eng}${impressions>0?'%':''}</td>
             <td style="color:var(--text-2);font-family:var(--mono);font-size:11px">${date}</td>
           </tr>
         `;
@@ -1823,7 +1843,7 @@ async function syncInstagram() {
 
       document.getElementById('ig-posts-table').innerHTML = `
         <table>
-          <thead><tr><th>Caption</th><th>Type</th><th>Likes</th><th>Comments</th><th>Date</th></tr></thead>
+          <thead><tr><th>Caption</th><th>Type</th><th>Impressions</th><th>Likes</th><th>Comments</th><th>Saves</th><th>Shares</th><th>Eng. Rate</th><th>Date</th></tr></thead>
           <tbody>${rows}</tbody>
         </table>
       `;
@@ -1867,19 +1887,22 @@ function importPostsToDashboard() {
   if (!igLivePosts.length) { toast('⚠ No posts to import', 'error'); return; }
   state.content = state.content.filter(c => !c._fromImport);
   igLivePosts.forEach(p => {
-    const views = 0;
+    const impressions = p.impressions || 0;
     const likes = p.like_count || 0;
     const comments = p.comments_count || 0;
+    const saves = p.saved || 0;
+    const shares = p.shares || 0;
     const post = {
       id: uid(),
       platform: 'Instagram',
       title: p.caption ? p.caption.slice(0, 60) : 'Untitled post',
-      views, likes, comments, shares: 0, saves: 0,
+      views: impressions,
+      likes, comments, shares, saves,
       date: p.timestamp ? new Date(p.timestamp).toISOString().split('T')[0] : today(),
-      engRate: 0,
       _fromImport: true,
       _type: p.media_type
     };
+    post.engRate = impressions > 0 ? ((likes + comments + saves + shares) / impressions) * 100 : 0;
     state.content.push(post);
   });
   save();
