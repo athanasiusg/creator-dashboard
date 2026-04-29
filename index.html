@@ -1809,7 +1809,7 @@ async function syncInstagram() {
         const getMetric = name => ins.find(i => i.name === name)?.values?.[0]?.value || 0;
         return {
           ...p,
-          impressions: getMetric('impressions'),
+          impressions: getMetric('reach'), // Meta returns reach for carousel albums
           reach: getMetric('reach'),
           saved: getMetric('saved'),
           shares: getMetric('shares'),
@@ -1843,7 +1843,7 @@ async function syncInstagram() {
 
       document.getElementById('ig-posts-table').innerHTML = `
         <table>
-          <thead><tr><th>Caption</th><th>Type</th><th>Impressions</th><th>Likes</th><th>Comments</th><th>Saves</th><th>Shares</th><th>Eng. Rate</th><th>Date</th></tr></thead>
+          <thead><tr><th>Caption</th><th>Type</th><th>Reach</th><th>Likes</th><th>Comments</th><th>Saves</th><th>Shares</th><th>Eng. Rate</th><th>Date</th></tr></thead>
           <tbody>${rows}</tbody>
         </table>
       `;
