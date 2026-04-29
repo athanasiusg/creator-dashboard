@@ -539,31 +539,6 @@
         </div>
       </div>
 
-      <div class="card">
-        <div class="card-header">
-          <div class="card-title">Revenue Pipeline</div>
-        </div>
-        <div class="card-body">
-          <div class="pipeline-row" id="pipeline-row">
-            <div class="pipeline-stage">
-              <div class="pipeline-count" id="pipe-pitched" style="color:var(--blue)">0</div>
-              <div class="pipeline-label">Pitched</div>
-            </div>
-            <div class="pipeline-stage">
-              <div class="pipeline-count" id="pipe-negotiating" style="color:var(--gold)">0</div>
-              <div class="pipeline-label">Negotiating</div>
-            </div>
-            <div class="pipeline-stage">
-              <div class="pipeline-count" id="pipe-booked" style="color:var(--accent)">0</div>
-              <div class="pipeline-label">Booked</div>
-            </div>
-            <div class="pipeline-stage">
-              <div class="pipeline-count" id="pipe-paid" style="color:#80e060">0</div>
-              <div class="pipeline-label">Paid</div>
-            </div>
-          </div>
-        </div>
-      </div>
     </div>
 
     <!-- ── AUDIENCE ── -->
@@ -943,13 +918,49 @@
 
 <script>
 // ═══════════════════════════════════════════════════
+// SUPABASE CONFIG
+// ═══════════════════════════════════════════════════
+const SB_URL  = 'https://jcdapxnacvladeespejd.supabase.co';
+const SB_KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpjZGFweG5hY3ZsYWRlZXNwZWpkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc0OTY4MTIsImV4cCI6MjA5MzA3MjgxMn0.iIBVC56UUNAP41vLaPE50d7ih9hCmP7rrDHcHnaO1XQ';
+const HEADERS = { 'Content-Type': 'application/json', 'apikey': SB_KEY, 'Authorization': `Bearer ${SB_KEY}` };
+
+async function sbGet(table) {
+  const res = await fetch(`${SB_URL}/rest/v1/${table}?select=*&order=created_at.asc`, { headers: HEADERS });
+  return res.ok ? res.json() : [];
+}
+
+async function sbInsert(table, row) {
+  const res = await fetch(`${SB_URL}/rest/v1/${table}`, {
+    method: 'POST',
+    headers: { ...HEADERS, 'Prefer': 'return=minimal' },
+    body: JSON.stringify(row)
+  });
+  return res.ok;
+}
+
+async function sbDelete(table, id) {
+  const res = await fetch(`${SB_URL}/rest/v1/${table}?id=eq.${id}`, {
+    method: 'DELETE',
+    headers: HEADERS
+  });
+  return res.ok;
+}
+
+async function sbUpsert(table, rows) {
+  if (!rows.length) return;
+  const res = await fetch(`${SB_URL}/rest/v1/${table}`, {
+    method: 'POST',
+    headers: { ...HEADERS, 'Prefer': 'resolution=merge-duplicates,return=minimal' },
+    body: JSON.stringify(rows)
+  });
+  return res.ok;
+}
+
+// ═══════════════════════════════════════════════════
 // STATE
 // ═══════════════════════════════════════════════════
-let state = {
-  audience: [],
-  content: [],
-  revenue: []
-};
+let state = { audience: [], content: [], revenue: [] };
+let dbReady = false;
 
 const STORAGE_KEY = 'creator_os_v1';
 
@@ -962,6 +973,79 @@ function load() {
     const d = localStorage.getItem(STORAGE_KEY);
     if (d) state = JSON.parse(d);
   } catch(e) {}
+}
+
+async function syncFromDB() {
+  try {
+    const [audience, content, revenue] = await Promise.all([
+      sbGet('audience'), sbGet('content'), sbGet('revenue')
+    ]);
+    // Map DB columns back to state shape
+    state.audience = audience.map(r => ({
+      id: r.id, platform: r.platform, followers: r.followers,
+      growth: r.growth, reach: r.reach, impressions: r.impressions,
+      date: r.date, _fromImport: r.from_import
+    }));
+    state.content = content.map(r => ({
+      id: r.id, platform: r.platform, title: r.title,
+      views: r.views, likes: r.likes, comments: r.comments,
+      shares: r.shares, saves: r.saves, engRate: r.eng_rate,
+      date: r.date, _fromImport: r.from_import
+    }));
+    state.revenue = revenue.map(r => ({
+      id: r.id, brand: r.brand, platform: r.platform,
+      fee: r.fee, status: r.status, date: r.date
+    }));
+    save();
+    dbReady = true;
+    return true;
+  } catch(e) {
+    console.error('DB sync failed:', e);
+    return false;
+  }
+}
+
+async function pushAudienceToDB(entry) {
+  return sbInsert('audience', {
+    id: entry.id, platform: entry.platform, followers: entry.followers,
+    growth: entry.growth, reach: entry.reach || 0, impressions: entry.impressions || 0,
+    date: entry.date, from_import: entry._fromImport || false
+  });
+}
+
+async function pushContentToDB(post) {
+  return sbInsert('content', {
+    id: post.id, platform: post.platform, title: post.title,
+    views: post.views || 0, likes: post.likes || 0, comments: post.comments || 0,
+    shares: post.shares || 0, saves: post.saves || 0, eng_rate: post.engRate || 0,
+    date: post.date, from_import: post._fromImport || false
+  });
+}
+
+async function pushRevenueToDB(deal) {
+  return sbInsert('revenue', {
+    id: deal.id, brand: deal.brand, platform: deal.platform,
+    fee: deal.fee, status: deal.status, date: deal.date
+  });
+}
+
+async function upsertBulkContent(posts) {
+  const rows = posts.map(p => ({
+    id: p.id, platform: p.platform, title: p.title,
+    views: p.views||0, likes: p.likes||0, comments: p.comments||0,
+    shares: p.shares||0, saves: p.saves||0, eng_rate: p.engRate||0,
+    date: p.date, from_import: p._fromImport||false
+  }));
+  return sbUpsert('content', rows);
+}
+
+async function upsertBulkAudience(entries) {
+  const rows = entries.map(e => ({
+    id: e.id, platform: e.platform, followers: e.followers,
+    growth: e.growth||0, reach: e.reach||0, impressions: e.impressions||0,
+    date: e.date, from_import: e._fromImport||false
+  }));
+  return sbUpsert('audience', rows);
 }
 
 // ═══════════════════════════════════════════════════
@@ -1084,6 +1168,8 @@ function addAudience() {
 
   state.audience.push({ id: uid(), platform, followers, growth: growth||0, reach: reach||0, impressions: impressions||0, date });
   save();
+  const entry = state.audience[state.audience.length - 1];
+  pushAudienceToDB(entry).catch(() => {});
   renderAudienceTable();
   renderOverview();
   toast('✓ Audience entry logged', 'success');
@@ -1095,6 +1181,7 @@ function addAudience() {
 function deleteAudience(id) {
   state.audience = state.audience.filter(e => e.id !== id);
   save(); renderAudienceTable(); renderOverview();
+  sbDelete('audience', id).catch(() => {});
   toast('Entry removed');
 }
 
@@ -1147,6 +1234,7 @@ function addContent() {
   post.engRate = engRate(post);
   state.content.push(post);
   save();
+  pushContentToDB(post).catch(() => {});
   renderContentTable();
   renderOverview();
   toast('✓ Post logged', 'success');
@@ -1157,6 +1245,7 @@ function addContent() {
 function deleteContent(id) {
   state.content = state.content.filter(e => e.id !== id);
   save(); renderContentTable(); renderOverview();
+  sbDelete('content', id).catch(() => {});
   toast('Post removed');
 }
 
@@ -1205,8 +1294,10 @@ function addRevenue() {
 
   if (!brand) { toast('⚠ Enter brand name', 'error'); return; }
 
-  state.revenue.push({ id: uid(), brand, platform, fee, status, date });
+  const deal = { id: uid(), brand, platform, fee, status, date };
+  state.revenue.push(deal);
   save();
+  pushRevenueToDB(deal).catch(() => {});
   renderRevenueTable();
   renderRevStats();
   renderOverview();
@@ -1219,6 +1310,7 @@ function addRevenue() {
 function deleteRevenue(id) {
   state.revenue = state.revenue.filter(e => e.id !== id);
   save(); renderRevenueTable(); renderRevStats(); renderOverview();
+  sbDelete('revenue', id).catch(() => {});
   toast('Deal removed');
 }
 
@@ -1298,11 +1390,13 @@ function renderRevStats() {
 function renderOverview() {
   // ── Stat cards
   const totalFollowers = state.audience.reduce((a,e) => a + (e.followers||0), 0);
-  const totalGrowth    = state.audience.reduce((a,e) => a + (e.growth||0), 0);
-  const totalRevenue   = state.revenue.reduce((a,d) => a + (d.fee||0), 0);
   const avgEng         = state.content.length
     ? state.content.reduce((a,p) => a + p.engRate, 0) / state.content.length
     : null;
+  const totalPosts     = state.content.length;
+  const platMap = {};
+  state.audience.forEach(e => { platMap[e.platform] = (platMap[e.platform]||0) + (e.followers||0); });
+  const topPlatform = Object.entries(platMap).sort((a,b)=>b[1]-a[1])[0];
 
   document.getElementById('overview-stats').innerHTML = `
     <div class="stat-card">
@@ -1311,16 +1405,9 @@ function renderOverview() {
       <div class="stat-meta">across all platforms</div>
     </div>
     <div class="stat-card">
-      <div class="stat-label">Net Growth</div>
-      <div class="stat-value ${totalGrowth>0?'stat-up':totalGrowth<0?'stat-down':''}">
-        ${state.audience.length ? (totalGrowth >= 0 ? '+' : '') + fmt(totalGrowth) : '—'}
-      </div>
-      <div class="stat-meta">total across entries</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-label">Revenue Pipeline</div>
-      <div class="stat-value stat-neutral">${totalRevenue ? money(totalRevenue) : '—'}</div>
-      <div class="stat-meta">${state.revenue.length} deal${state.revenue.length!==1?'s':''} logged</div>
+      <div class="stat-label">Posts Tracked</div>
+      <div class="stat-value">${totalPosts || '—'}</div>
+      <div class="stat-meta">with engagement data</div>
     </div>
     <div class="stat-card">
       <div class="stat-label">Avg Engagement</div>
@@ -1328,6 +1415,11 @@ function renderOverview() {
         ${avgEng != null ? pct(avgEng) : '—'}
       </div>
       <div class="stat-meta">${state.content.length} posts tracked</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Top Platform</div>
+      <div class="stat-value" style="font-size:18px">${topPlatform ? topPlatform[0] : '—'}</div>
+      <div class="stat-meta">${topPlatform ? fmt(topPlatform[1]) + ' followers' : 'no data yet'}</div>
     </div>
   `;
 
@@ -1372,12 +1464,6 @@ function renderOverview() {
     `).join('');
   }
 
-  // ── Pipeline
-  const statuses = ['pitched','negotiating','booked','paid'];
-  statuses.forEach(s => {
-    const count = state.revenue.filter(d => d.status === s).length;
-    document.getElementById(`pipe-${s}`).textContent = count;
-  });
 }
 
 // ═══════════════════════════════════════════════════
@@ -1820,6 +1906,7 @@ function pushToAudience(followers, following) {
   if (existing >= 0) state.audience[existing] = entry;
   else state.audience.push(entry);
   save();
+  upsertBulkAudience([entry]).catch(() => {});
   renderAudienceTable();
   renderOverview();
   toast('✓ Pushed to Audience tab', 'success');
@@ -1848,6 +1935,7 @@ function importPostsToDashboard() {
     state.content.push(post);
   });
   save();
+  upsertBulkContent(state.content.filter(c => c._fromImport)).catch(() => {});
   renderContentTable();
   renderOverview();
   toast(`✓ ${igLivePosts.length} posts imported to Content tab`, 'success');
@@ -2096,12 +2184,30 @@ function clearAllData() {
 // ═══════════════════════════════════════════════════
 // INIT
 // ═══════════════════════════════════════════════════
-load();
-renderAudienceTable();
-renderContentTable();
-renderRevenueTable();
-renderRevStats();
-renderOverview();
+async function init() {
+  // Show loading state
+  document.getElementById('overview-stats').innerHTML = `
+    <div style="grid-column:1/-1;padding:32px;text-align:center;color:var(--text-2);font-family:var(--mono);font-size:12px">
+      Loading from database...
+    </div>`;
+
+  // Try Supabase first, fall back to localStorage
+  const ok = await syncFromDB();
+  if (!ok) {
+    load(); // fallback to localStorage
+    toast('⚠ Using local data — database offline', 'default');
+  } else {
+    toast('✓ Synced from database', 'success');
+  }
+
+  renderAudienceTable();
+  renderContentTable();
+  renderRevenueTable();
+  renderRevStats();
+  renderOverview();
+}
+
+init();
 </script>
 </body>
 </html>
