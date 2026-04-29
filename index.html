@@ -1,0 +1,1940 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Creator OS — Analytics Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<style>
+  :root {
+    --bg-0: #08090c;
+    --bg-1: #0f1117;
+    --bg-2: #161820;
+    --bg-3: #1e2130;
+    --border: rgba(255,255,255,0.07);
+    --border-bright: rgba(255,255,255,0.14);
+    --accent: #00e5c3;
+    --accent-dim: rgba(0,229,195,0.12);
+    --accent-mid: rgba(0,229,195,0.25);
+    --gold: #f0c060;
+    --gold-dim: rgba(240,192,96,0.12);
+    --red: #ff5a5a;
+    --red-dim: rgba(255,90,90,0.12);
+    --blue: #60a0f0;
+    --blue-dim: rgba(96,160,240,0.12);
+    --purple: #a080f0;
+    --text-0: #f0f1f5;
+    --text-1: #9ea3b8;
+    --text-2: #5c6080;
+    --radius: 14px;
+    --radius-sm: 8px;
+    --mono: 'DM Mono', monospace;
+    --sans: 'Syne', sans-serif;
+    --shadow: 0 4px 32px rgba(0,0,0,0.5);
+    --shadow-card: 0 2px 16px rgba(0,0,0,0.4);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: var(--sans);
+    background: var(--bg-0);
+    color: var(--text-0);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── SCROLLBAR ── */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--bg-3); border-radius: 99px; }
+
+  /* ── LAYOUT ── */
+  .shell { display: flex; min-height: 100vh; }
+
+  /* ── SIDEBAR ── */
+  .sidebar {
+    width: 220px;
+    flex-shrink: 0;
+    background: var(--bg-1);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    padding: 28px 0;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+  }
+
+  .logo {
+    padding: 0 22px 28px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 16px;
+  }
+
+  .logo-mark {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .logo-icon {
+    width: 32px;
+    height: 32px;
+    background: linear-gradient(135deg, var(--accent), #00a8ff);
+    border-radius: 8px;
+    display: grid;
+    place-items: center;
+    font-size: 14px;
+    font-weight: 800;
+    color: #000;
+    letter-spacing: -1px;
+  }
+
+  .logo-text { font-size: 15px; font-weight: 700; letter-spacing: -0.3px; }
+  .logo-sub { font-size: 10px; color: var(--text-2); font-family: var(--mono); letter-spacing: 1px; margin-top: 1px; }
+
+  .nav { display: flex; flex-direction: column; gap: 2px; padding: 0 10px; flex: 1; }
+
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    font-size: 13.5px;
+    font-weight: 500;
+    color: var(--text-1);
+    transition: all 0.15s ease;
+    user-select: none;
+    letter-spacing: -0.2px;
+  }
+
+  .nav-item:hover { background: var(--bg-3); color: var(--text-0); }
+  .nav-item.active { background: var(--accent-dim); color: var(--accent); }
+  .nav-item .nav-icon { font-size: 16px; width: 20px; text-align: center; flex-shrink: 0; }
+
+  .sidebar-footer {
+    padding: 16px 22px 0;
+    border-top: 1px solid var(--border);
+    margin-top: auto;
+  }
+
+  .sidebar-footer-label { font-size: 10px; color: var(--text-2); font-family: var(--mono); letter-spacing: 1px; margin-bottom: 8px; }
+  .version-tag { display: inline-block; background: var(--bg-3); border: 1px solid var(--border-bright); border-radius: 99px; padding: 3px 10px; font-size: 11px; color: var(--text-1); font-family: var(--mono); }
+
+  /* ── MAIN ── */
+  .main { flex: 1; min-width: 0; overflow-y: auto; }
+
+  /* ── TOPBAR ── */
+  .topbar {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: rgba(8,9,12,0.85);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    padding: 16px 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .page-title { font-size: 18px; font-weight: 700; letter-spacing: -0.4px; }
+  .page-sub { font-size: 12px; color: var(--text-2); font-family: var(--mono); margin-top: 2px; }
+
+  .topbar-actions { display: flex; gap: 10px; align-items: center; }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    border-radius: var(--radius-sm);
+    font-size: 12.5px;
+    font-weight: 600;
+    font-family: var(--sans);
+    cursor: pointer;
+    border: none;
+    transition: all 0.15s ease;
+    letter-spacing: -0.2px;
+  }
+
+  .btn-ghost {
+    background: var(--bg-3);
+    color: var(--text-1);
+    border: 1px solid var(--border-bright);
+  }
+  .btn-ghost:hover { background: var(--bg-2); color: var(--text-0); border-color: var(--border-bright); }
+
+  .btn-accent {
+    background: var(--accent);
+    color: #000;
+  }
+  .btn-accent:hover { opacity: 0.88; }
+
+  .btn-sm { padding: 6px 12px; font-size: 11.5px; }
+
+  /* ── CONTENT AREA ── */
+  .content { padding: 32px; display: none; }
+  .content.active { display: block; animation: fadeUp 0.25s ease both; }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ── SECTION HEADER ── */
+  .section-header { margin-bottom: 24px; }
+  .section-title { font-size: 22px; font-weight: 800; letter-spacing: -0.5px; }
+  .section-sub { font-size: 13px; color: var(--text-2); margin-top: 4px; font-family: var(--mono); }
+
+  /* ── STAT GRID ── */
+  .stat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px; margin-bottom: 28px; }
+
+  .stat-card {
+    background: var(--bg-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    transition: border-color 0.2s;
+  }
+  .stat-card:hover { border-color: var(--border-bright); }
+
+  .stat-label { font-size: 11px; font-family: var(--mono); color: var(--text-2); letter-spacing: 0.8px; text-transform: uppercase; margin-bottom: 10px; }
+  .stat-value { font-size: 28px; font-weight: 800; letter-spacing: -1px; line-height: 1; }
+  .stat-meta { font-size: 12px; color: var(--text-2); margin-top: 8px; font-family: var(--mono); }
+  .stat-up { color: var(--accent); }
+  .stat-down { color: var(--red); }
+  .stat-neutral { color: var(--gold); }
+
+  /* ── CARD ── */
+  .card {
+    background: var(--bg-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    margin-bottom: 20px;
+  }
+
+  .card-header {
+    padding: 18px 22px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .card-title { font-size: 14px; font-weight: 700; letter-spacing: -0.3px; }
+  .card-body { padding: 22px; }
+
+  /* ── GRID 2 ── */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+
+  @media (max-width: 900px) {
+    .grid-2, .grid-3 { grid-template-columns: 1fr; }
+    .sidebar { display: none; }
+    .topbar { padding: 14px 20px; }
+    .content { padding: 20px; }
+  }
+
+  /* ── FORM ── */
+  .form-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 14px; }
+
+  .form-group { display: flex; flex-direction: column; gap: 6px; }
+  .form-label { font-size: 11px; font-family: var(--mono); color: var(--text-2); letter-spacing: 0.6px; text-transform: uppercase; }
+
+  .form-input, .form-select {
+    background: var(--bg-1);
+    border: 1px solid var(--border-bright);
+    border-radius: var(--radius-sm);
+    padding: 9px 12px;
+    color: var(--text-0);
+    font-size: 13px;
+    font-family: var(--sans);
+    font-weight: 500;
+    transition: border-color 0.15s, box-shadow 0.15s;
+    outline: none;
+    width: 100%;
+  }
+
+  .form-input:focus, .form-select:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-dim);
+  }
+
+  .form-select { cursor: pointer; }
+  .form-select option { background: var(--bg-1); }
+
+  .form-actions { display: flex; gap: 10px; margin-top: 16px; align-items: center; }
+
+  /* ── TABLE ── */
+  .table-wrap { overflow-x: auto; }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+
+  thead th {
+    padding: 10px 14px;
+    text-align: left;
+    font-size: 10.5px;
+    font-family: var(--mono);
+    font-weight: 500;
+    color: var(--text-2);
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+
+  tbody tr {
+    border-bottom: 1px solid var(--border);
+    transition: background 0.1s;
+  }
+
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr:hover { background: rgba(255,255,255,0.02); }
+
+  tbody td {
+    padding: 11px 14px;
+    color: var(--text-1);
+    vertical-align: middle;
+    white-space: nowrap;
+  }
+
+  tbody td:first-child { color: var(--text-0); font-weight: 600; }
+
+  /* ── BADGE ── */
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 9px;
+    border-radius: 99px;
+    font-size: 10.5px;
+    font-family: var(--mono);
+    font-weight: 500;
+    letter-spacing: 0.3px;
+  }
+
+  .badge-ig { background: rgba(200,100,200,0.15); color: #e080e0; border: 1px solid rgba(200,100,200,0.2); }
+  .badge-tt { background: rgba(255,100,80,0.12); color: #ff8070; border: 1px solid rgba(255,100,80,0.2); }
+  .badge-yt { background: rgba(255,60,60,0.12); color: #ff6060; border: 1px solid rgba(255,60,60,0.2); }
+  .badge-tw { background: rgba(96,200,240,0.12); color: #60d0f0; border: 1px solid rgba(96,200,240,0.2); }
+  .badge-li { background: rgba(80,140,230,0.12); color: #80b0f0; border: 1px solid rgba(80,140,230,0.2); }
+
+  .badge-pitched { background: var(--blue-dim); color: var(--blue); border: 1px solid rgba(96,160,240,0.2); }
+  .badge-negotiating { background: rgba(200,180,80,0.12); color: var(--gold); border: 1px solid rgba(200,180,80,0.2); }
+  .badge-booked { background: var(--accent-dim); color: var(--accent); border: 1px solid var(--accent-mid); }
+  .badge-paid { background: rgba(100,200,80,0.12); color: #80e060; border: 1px solid rgba(100,200,80,0.2); }
+
+  /* ── EMPTY STATE ── */
+  .empty-state {
+    text-align: center;
+    padding: 48px 24px;
+    color: var(--text-2);
+  }
+  .empty-icon { font-size: 36px; margin-bottom: 12px; opacity: 0.4; }
+  .empty-text { font-size: 14px; font-family: var(--mono); }
+
+  /* ── INSIGHTS ── */
+  .insight-section { margin-bottom: 24px; }
+  .insight-label {
+    font-size: 10.5px;
+    font-family: var(--mono);
+    color: var(--text-2);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+  .insight-list { display: flex; flex-direction: column; gap: 8px; }
+
+  .insight-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 13px 16px;
+    background: var(--bg-1);
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+    font-size: 13.5px;
+    line-height: 1.5;
+    font-weight: 500;
+  }
+
+  .insight-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    margin-top: 5px;
+  }
+
+  .dot-green { background: var(--accent); box-shadow: 0 0 6px var(--accent); }
+  .dot-red { background: var(--red); box-shadow: 0 0 6px var(--red); }
+  .dot-gold { background: var(--gold); box-shadow: 0 0 6px var(--gold); }
+
+  /* ── PLATFORM BAR ── */
+  .platform-bar { margin-bottom: 20px; }
+  .platform-row { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+  .platform-name { font-size: 12px; font-family: var(--mono); color: var(--text-1); width: 90px; flex-shrink: 0; }
+  .bar-track { flex: 1; height: 6px; background: var(--bg-3); border-radius: 99px; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 99px; transition: width 0.6s cubic-bezier(0.4,0,0.2,1); }
+  .platform-val { font-size: 12px; font-family: var(--mono); color: var(--text-2); width: 60px; text-align: right; flex-shrink: 0; }
+
+  /* ── TOP CONTENT LIST ── */
+  .top-content-list { display: flex; flex-direction: column; gap: 10px; }
+  .top-content-item {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 12px 16px;
+    background: var(--bg-1);
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+  }
+  .top-content-rank { font-size: 11px; font-family: var(--mono); color: var(--text-2); width: 20px; flex-shrink: 0; }
+  .top-content-info { flex: 1; min-width: 0; }
+  .top-content-title { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .top-content-meta { font-size: 11px; font-family: var(--mono); color: var(--text-2); margin-top: 2px; }
+  .top-content-eng { font-size: 13px; font-family: var(--mono); color: var(--accent); font-weight: 500; flex-shrink: 0; }
+
+  /* ── TEMPLATE BOX ── */
+  .template-box {
+    background: var(--bg-1);
+    border: 1px solid var(--border-bright);
+    border-radius: var(--radius-sm);
+    padding: 16px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text-1);
+    line-height: 1.7;
+    white-space: pre-wrap;
+    word-break: break-word;
+    max-height: 280px;
+    overflow-y: auto;
+    position: relative;
+  }
+
+  .copy-btn-abs {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+  }
+
+  /* ── REVENUE PIPELINE ── */
+  .pipeline-row { display: flex; gap: 12px; margin-bottom: 20px; }
+  .pipeline-stage {
+    flex: 1;
+    background: var(--bg-1);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 14px;
+    text-align: center;
+  }
+  .pipeline-count { font-size: 22px; font-weight: 800; letter-spacing: -0.5px; }
+  .pipeline-label { font-size: 10px; font-family: var(--mono); color: var(--text-2); margin-top: 4px; letter-spacing: 0.8px; text-transform: uppercase; }
+
+  /* ── TOAST ── */
+  .toast-container { position: fixed; bottom: 24px; right: 24px; z-index: 999; display: flex; flex-direction: column; gap: 8px; pointer-events: none; }
+  .toast {
+    background: var(--bg-3);
+    border: 1px solid var(--border-bright);
+    border-radius: var(--radius-sm);
+    padding: 12px 18px;
+    font-size: 13px;
+    font-family: var(--mono);
+    color: var(--text-0);
+    pointer-events: auto;
+    animation: slideIn 0.2s ease both, fadeOut 0.3s ease 2.7s both;
+    box-shadow: var(--shadow);
+  }
+  @keyframes slideIn { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
+  @keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }
+
+  /* ── DIVIDER ── */
+  .divider { height: 1px; background: var(--border); margin: 20px 0; }
+
+  /* ── ENGAGEMENT CHIP ── */
+  .eng-chip {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 99px;
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 500;
+  }
+  .eng-high { background: var(--accent-dim); color: var(--accent); }
+  .eng-mid { background: var(--gold-dim); color: var(--gold); }
+  .eng-low { background: var(--red-dim); color: var(--red); }
+
+  /* ── ACTION CHIP ── */
+  .action-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
+  .action-chip {
+    padding: 3px 10px;
+    border-radius: 99px;
+    border: 1px solid var(--border-bright);
+    font-size: 11px;
+    font-family: var(--mono);
+    color: var(--text-2);
+    cursor: pointer;
+    transition: all 0.1s;
+    background: transparent;
+  }
+  .action-chip:hover { background: var(--bg-3); color: var(--text-1); }
+
+  /* Delete btn */
+  .del-btn { background: none; border: none; color: var(--red); cursor: pointer; font-size: 13px; opacity: 0.5; transition: opacity 0.1s; padding: 4px 6px; border-radius: 4px; }
+  .del-btn:hover { opacity: 1; background: var(--red-dim); }
+
+  /* ── EXPORT BAR ── */
+  .export-bar { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 20px; }
+</style>
+</head>
+<body>
+
+<div class="shell">
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="logo">
+      <div class="logo-mark">
+        <div class="logo-icon">C</div>
+        <div>
+          <div class="logo-text">Creator OS</div>
+          <div class="logo-sub">ANALYTICS</div>
+        </div>
+      </div>
+    </div>
+
+    <nav class="nav">
+      <div class="nav-item active" data-tab="overview">
+        <span class="nav-icon">◈</span> Overview
+      </div>
+      <div class="nav-item" data-tab="audience">
+        <span class="nav-icon">◎</span> Audience
+      </div>
+      <div class="nav-item" data-tab="content">
+        <span class="nav-icon">◇</span> Content
+      </div>
+      <div class="nav-item" data-tab="revenue">
+        <span class="nav-icon">◆</span> Revenue
+      </div>
+      <div class="nav-item" data-tab="insights">
+        <span class="nav-icon">◉</span> Insights
+      </div>
+      <div class="nav-item" data-tab="instagram">
+        <span class="nav-icon">◈</span> Instagram
+      </div>
+      <div class="nav-item" data-tab="export">
+        <span class="nav-icon">▷</span> Export
+      </div>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="sidebar-footer-label">VERSION</div>
+      <span class="version-tag">v1.0.0</span>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <div class="main">
+    <!-- TOPBAR -->
+    <div class="topbar">
+      <div>
+        <div class="page-title" id="page-title">Overview</div>
+        <div class="page-sub" id="page-sub">All platforms · All time</div>
+      </div>
+      <div class="topbar-actions">
+        <button class="btn btn-ghost btn-sm" onclick="clearAllData()">⟳ Reset</button>
+        <button class="btn btn-accent btn-sm" onclick="switchTab('export')">↗ Export</button>
+      </div>
+    </div>
+
+    <!-- ── OVERVIEW ── -->
+    <div class="content active" id="tab-overview">
+      <div class="section-header">
+        <div class="section-title">Dashboard</div>
+        <div class="section-sub">Your creator metrics at a glance</div>
+      </div>
+
+      <div class="stat-grid" id="overview-stats">
+        <!-- populated by JS -->
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Top Performing Content</div>
+          </div>
+          <div class="card-body">
+            <div class="top-content-list" id="top-content-list">
+              <div class="empty-state">
+                <div class="empty-icon">◇</div>
+                <div class="empty-text">No content logged yet</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Platform Breakdown</div>
+          </div>
+          <div class="card-body">
+            <div class="platform-bar" id="platform-bars">
+              <div class="empty-state">
+                <div class="empty-icon">◎</div>
+                <div class="empty-text">No audience data yet</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Revenue Pipeline</div>
+        </div>
+        <div class="card-body">
+          <div class="pipeline-row" id="pipeline-row">
+            <div class="pipeline-stage">
+              <div class="pipeline-count" id="pipe-pitched" style="color:var(--blue)">0</div>
+              <div class="pipeline-label">Pitched</div>
+            </div>
+            <div class="pipeline-stage">
+              <div class="pipeline-count" id="pipe-negotiating" style="color:var(--gold)">0</div>
+              <div class="pipeline-label">Negotiating</div>
+            </div>
+            <div class="pipeline-stage">
+              <div class="pipeline-count" id="pipe-booked" style="color:var(--accent)">0</div>
+              <div class="pipeline-label">Booked</div>
+            </div>
+            <div class="pipeline-stage">
+              <div class="pipeline-count" id="pipe-paid" style="color:#80e060">0</div>
+              <div class="pipeline-label">Paid</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── AUDIENCE ── -->
+    <div class="content" id="tab-audience">
+      <div class="section-header">
+        <div class="section-title">Audience Tracking</div>
+        <div class="section-sub">Log your follower metrics per platform</div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Log Audience Entry</div>
+        </div>
+        <div class="card-body">
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label">Platform</label>
+              <select class="form-select" id="aud-platform">
+                <option value="Instagram">Instagram</option>
+                <option value="TikTok">TikTok</option>
+                <option value="YouTube">YouTube</option>
+                <option value="Twitter/X">Twitter/X</option>
+                <option value="LinkedIn">LinkedIn</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Followers</label>
+              <input class="form-input" type="number" id="aud-followers" placeholder="e.g. 12000" min="0" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Net Growth</label>
+              <input class="form-input" type="number" id="aud-growth" placeholder="e.g. +340 or -20" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Reach</label>
+              <input class="form-input" type="number" id="aud-reach" placeholder="e.g. 55000" min="0" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Impressions</label>
+              <input class="form-input" type="number" id="aud-impressions" placeholder="e.g. 120000" min="0" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Date</label>
+              <input class="form-input" type="date" id="aud-date" />
+            </div>
+          </div>
+          <div class="form-actions">
+            <button class="btn btn-accent" onclick="addAudience()">+ Add Entry</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Audience Log</div>
+          <span id="aud-count" style="font-size:12px;color:var(--text-2);font-family:var(--mono)">0 entries</span>
+        </div>
+        <div class="card-body" style="padding:0">
+          <div class="table-wrap" id="aud-table-wrap">
+            <div class="empty-state">
+              <div class="empty-icon">◎</div>
+              <div class="empty-text">No entries yet. Log your first audience snapshot.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── CONTENT ── -->
+    <div class="content" id="tab-content">
+      <div class="section-header">
+        <div class="section-title">Content Performance</div>
+        <div class="section-sub">Log posts and track engagement automatically</div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Log a Post</div>
+        </div>
+        <div class="card-body">
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label">Platform</label>
+              <select class="form-select" id="con-platform">
+                <option value="Instagram">Instagram</option>
+                <option value="TikTok">TikTok</option>
+                <option value="YouTube">YouTube</option>
+                <option value="Twitter/X">Twitter/X</option>
+                <option value="LinkedIn">LinkedIn</option>
+              </select>
+            </div>
+            <div class="form-group" style="grid-column: span 2;">
+              <label class="form-label">Post Title / Description</label>
+              <input class="form-input" type="text" id="con-title" placeholder="e.g. My morning routine 2024" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Views</label>
+              <input class="form-input" type="number" id="con-views" placeholder="e.g. 50000" min="0" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Likes</label>
+              <input class="form-input" type="number" id="con-likes" placeholder="e.g. 3200" min="0" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Comments</label>
+              <input class="form-input" type="number" id="con-comments" placeholder="e.g. 180" min="0" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Shares</label>
+              <input class="form-input" type="number" id="con-shares" placeholder="e.g. 420" min="0" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Saves</label>
+              <input class="form-input" type="number" id="con-saves" placeholder="e.g. 890" min="0" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Date Posted</label>
+              <input class="form-input" type="date" id="con-date" />
+            </div>
+          </div>
+          <div class="form-actions">
+            <button class="btn btn-accent" onclick="addContent()">+ Add Post</button>
+            <span style="font-size:12px;color:var(--text-2);font-family:var(--mono)">Engagement rate = (likes+comments+shares+saves) / views × 100</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Content Log</div>
+          <span id="con-count" style="font-size:12px;color:var(--text-2);font-family:var(--mono)">0 posts</span>
+        </div>
+        <div class="card-body" style="padding:0">
+          <div class="table-wrap" id="con-table-wrap">
+            <div class="empty-state">
+              <div class="empty-icon">◇</div>
+              <div class="empty-text">No posts logged yet. Add your first post.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── REVENUE ── -->
+    <div class="content" id="tab-revenue">
+      <div class="section-header">
+        <div class="section-title">Revenue Tracking</div>
+        <div class="section-sub">Manage brand deals and income pipeline</div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Log a Deal</div>
+        </div>
+        <div class="card-body">
+          <div class="form-grid">
+            <div class="form-group" style="grid-column: span 2;">
+              <label class="form-label">Brand Name</label>
+              <input class="form-input" type="text" id="rev-brand" placeholder="e.g. Nike, Squarespace" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Platform</label>
+              <select class="form-select" id="rev-platform">
+                <option value="Instagram">Instagram</option>
+                <option value="TikTok">TikTok</option>
+                <option value="YouTube">YouTube</option>
+                <option value="Twitter/X">Twitter/X</option>
+                <option value="LinkedIn">LinkedIn</option>
+                <option value="Multi-platform">Multi-platform</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Fee ($)</label>
+              <input class="form-input" type="number" id="rev-fee" placeholder="e.g. 2500" min="0" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Status</label>
+              <select class="form-select" id="rev-status">
+                <option value="pitched">Pitched</option>
+                <option value="negotiating">Negotiating</option>
+                <option value="booked">Booked</option>
+                <option value="paid">Paid</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Date</label>
+              <input class="form-input" type="date" id="rev-date" />
+            </div>
+          </div>
+          <div class="form-actions">
+            <button class="btn btn-accent" onclick="addRevenue()">+ Add Deal</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="stat-grid" id="rev-stats" style="margin-bottom:20px"></div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Deal Tracker</div>
+          <span id="rev-count" style="font-size:12px;color:var(--text-2);font-family:var(--mono)">0 deals</span>
+        </div>
+        <div class="card-body" style="padding:0">
+          <div class="table-wrap" id="rev-table-wrap">
+            <div class="empty-state">
+              <div class="empty-icon">◆</div>
+              <div class="empty-text">No deals logged. Add your first brand deal.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── INSIGHTS ── -->
+    <div class="content" id="tab-insights">
+      <div class="section-header">
+        <div class="section-title">Insights & Recommendations</div>
+        <div class="section-sub">Auto-computed from your logged data</div>
+      </div>
+      <div id="insights-body">
+        <div class="empty-state" style="padding:60px 24px;">
+          <div class="empty-icon">◉</div>
+          <div class="empty-text">Log audience & content data to generate insights</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── INSTAGRAM IMPORT ── -->
+    <div class="content" id="tab-instagram">
+      <div class="section-header">
+        <div class="section-title">Instagram Import</div>
+        <div class="section-sub">Upload your Instagram data ZIP to auto-populate your dashboard</div>
+      </div>
+
+      <!-- Drop Zone -->
+      <div id="ig-dropzone" style="
+        border: 2px dashed var(--border-bright);
+        border-radius: var(--radius);
+        padding: 48px;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.2s;
+        background: var(--bg-2);
+        margin-bottom: 24px;
+      " onclick="document.getElementById('ig-zip-input').click()"
+         ondragover="event.preventDefault();this.style.borderColor='var(--accent)';this.style.background='var(--accent-dim)'"
+         ondragleave="this.style.borderColor='var(--border-bright)';this.style.background='var(--bg-2)'"
+         ondrop="handleZipDrop(event)">
+        <div style="font-size:40px;margin-bottom:14px;opacity:0.5">📦</div>
+        <div style="font-size:16px;font-weight:700;margin-bottom:6px">Drop your Instagram ZIP here</div>
+        <div style="font-size:12px;color:var(--text-2);font-family:var(--mono)">or click to browse · instagram-[username]-[date].zip</div>
+        <input type="file" id="ig-zip-input" accept=".zip" style="display:none" onchange="handleZipFile(this.files[0])" />
+      </div>
+
+      <!-- What gets imported -->
+      <div class="card" style="margin-bottom:20px">
+        <div class="card-header"><div class="card-title">What gets imported</div></div>
+        <div class="card-body">
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px">
+            <div style="padding:14px;background:var(--bg-1);border-radius:var(--radius-sm);border:1px solid var(--border)">
+              <div style="color:var(--accent);font-size:18px;margin-bottom:6px">✓</div>
+              <div style="font-size:13px;font-weight:600">Follower Count</div>
+              <div style="font-size:11px;color:var(--text-2);font-family:var(--mono);margin-top:3px">Total + who followed when</div>
+            </div>
+            <div style="padding:14px;background:var(--bg-1);border-radius:var(--radius-sm);border:1px solid var(--border)">
+              <div style="color:var(--accent);font-size:18px;margin-bottom:6px">✓</div>
+              <div style="font-size:13px;font-weight:600">Following Count</div>
+              <div style="font-size:11px;color:var(--text-2);font-family:var(--mono);margin-top:3px">How many you follow back</div>
+            </div>
+            <div style="padding:14px;background:var(--bg-1);border-radius:var(--radius-sm);border:1px solid var(--border)">
+              <div style="color:var(--accent);font-size:18px;margin-bottom:6px">✓</div>
+              <div style="font-size:13px;font-weight:600">Post History</div>
+              <div style="font-size:11px;color:var(--text-2);font-family:var(--mono);margin-top:3px">Titles + dates of all posts</div>
+            </div>
+            <div style="padding:14px;background:var(--bg-1);border-radius:var(--radius-sm);border:1px solid var(--border)">
+              <div style="color:var(--accent);font-size:18px;margin-bottom:6px">✓</div>
+              <div style="font-size:13px;font-weight:600">Net Growth</div>
+              <div style="font-size:11px;color:var(--text-2);font-family:var(--mono);margin-top:3px">Followers gained vs unfollowed</div>
+            </div>
+            <div style="padding:14px;background:var(--bg-1);border-radius:var(--radius-sm);border:1px solid var(--border)">
+              <div style="color:var(--red);font-size:18px;margin-bottom:6px">✕</div>
+              <div style="font-size:13px;font-weight:600">Likes / Views</div>
+              <div style="font-size:11px;color:var(--text-2);font-family:var(--mono);margin-top:3px">Not in Instagram export</div>
+            </div>
+            <div style="padding:14px;background:var(--bg-1);border-radius:var(--radius-sm);border:1px solid var(--border)">
+              <div style="color:var(--red);font-size:18px;margin-bottom:6px">✕</div>
+              <div style="font-size:13px;font-weight:600">Reach / Impressions</div>
+              <div style="font-size:11px;color:var(--text-2);font-family:var(--mono);margin-top:3px">Not in Instagram export</div>
+            </div>
+          </div>
+          <div style="margin-top:14px;padding:12px 16px;background:var(--gold-dim);border:1px solid rgba(240,192,96,0.2);border-radius:var(--radius-sm);font-size:12px;color:var(--gold);font-family:var(--mono)">
+            ⚡ After import, go to the Content tab to add likes/views manually for your posts — Instagram keeps that data locked.
+          </div>
+        </div>
+      </div>
+
+      <!-- Import log -->
+      <div class="card" id="ig-result-card" style="display:none">
+        <div class="card-header">
+          <div class="card-title">Import Results</div>
+          <button class="btn btn-ghost btn-sm" onclick="document.getElementById('ig-result-card').style.display='none'">✕ Close</button>
+        </div>
+        <div class="card-body">
+          <div id="ig-result-body"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── EXPORT ── -->
+
+    <div class="content" id="tab-export">
+      <div class="section-header">
+        <div class="section-title">Export & Templates</div>
+        <div class="section-sub">Copy data for AI analysis or download as JSON</div>
+      </div>
+
+      <div class="export-bar">
+        <button class="btn btn-ghost" onclick="downloadJSON()">↓ Download All Data (JSON)</button>
+        <button class="btn btn-ghost" onclick="downloadCSV('audience')">↓ Audience CSV</button>
+        <button class="btn btn-ghost" onclick="downloadCSV('content')">↓ Content CSV</button>
+        <button class="btn btn-ghost" onclick="downloadCSV('revenue')">↓ Revenue CSV</button>
+        <button class="btn btn-accent" onclick="importJSON()">↑ Import JSON</button>
+        <input type="file" id="import-file" accept=".json" style="display:none" onchange="handleImport(event)" />
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">AI Analysis Template</div>
+            <button class="btn btn-ghost btn-sm" onclick="copyTemplate('ai')">Copy</button>
+          </div>
+          <div class="card-body" style="padding:0">
+            <div class="template-box" id="ai-template">
+              <!-- populated by JS -->
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Weekly Report Template</div>
+            <button class="btn btn-ghost btn-sm" onclick="copyTemplate('weekly')">Copy</button>
+          </div>
+          <div class="card-body" style="padding:0">
+            <div class="template-box" id="weekly-template">
+              <!-- populated by JS -->
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Brand Pitch Template</div>
+          <button class="btn btn-ghost btn-sm" onclick="copyTemplate('pitch')">Copy</button>
+        </div>
+        <div class="card-body" style="padding:0">
+          <div class="template-box" id="pitch-template">
+            <!-- populated by JS -->
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /main -->
+</div><!-- /shell -->
+
+<!-- TOAST CONTAINER -->
+<div class="toast-container" id="toast-container"></div>
+
+<script>
+// ═══════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════
+let state = {
+  audience: [],
+  content: [],
+  revenue: []
+};
+
+const STORAGE_KEY = 'creator_os_v1';
+
+function save() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+}
+
+function load() {
+  try {
+    const d = localStorage.getItem(STORAGE_KEY);
+    if (d) state = JSON.parse(d);
+  } catch(e) {}
+}
+
+// ═══════════════════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════════════════
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
+
+function fmt(n) {
+  if (n == null || isNaN(n)) return '—';
+  if (n >= 1e6) return (n/1e6).toFixed(1) + 'M';
+  if (n >= 1e3) return (n/1e3).toFixed(1) + 'K';
+  return n.toLocaleString();
+}
+
+function money(n) {
+  if (!n) return '$0';
+  return '$' + Number(n).toLocaleString('en-US', { minimumFractionDigits: 0 });
+}
+
+function pct(n) { return n != null && !isNaN(n) ? n.toFixed(2) + '%' : '—'; }
+
+function engRate(post) {
+  const total = (+post.likes||0) + (+post.comments||0) + (+post.shares||0) + (+post.saves||0);
+  const views = +post.views || 0;
+  if (!views) return 0;
+  return (total / views) * 100;
+}
+
+function platformBadge(p) {
+  const map = {
+    'Instagram': 'ig', 'TikTok': 'tt', 'YouTube': 'yt', 'Twitter/X': 'tw', 'LinkedIn': 'li', 'Multi-platform': 'li'
+  };
+  return `<span class="badge badge-${map[p]||'ig'}">${p}</span>`;
+}
+
+function statusBadge(s) {
+  return `<span class="badge badge-${s}">${s.charAt(0).toUpperCase()+s.slice(1)}</span>`;
+}
+
+function engChip(rate) {
+  if (rate >= 5) return `<span class="eng-chip eng-high">${pct(rate)}</span>`;
+  if (rate >= 2) return `<span class="eng-chip eng-mid">${pct(rate)}</span>`;
+  return `<span class="eng-chip eng-low">${pct(rate)}</span>`;
+}
+
+function today() {
+  return new Date().toISOString().split('T')[0];
+}
+
+function toast(msg, type='default') {
+  const t = document.createElement('div');
+  t.className = 'toast';
+  t.style.borderColor = type === 'success' ? 'rgba(0,229,195,0.3)' : type === 'error' ? 'rgba(255,90,90,0.3)' : '';
+  t.textContent = msg;
+  document.getElementById('toast-container').appendChild(t);
+  setTimeout(() => t.remove(), 3000);
+}
+
+// ═══════════════════════════════════════════════════
+// NAV
+// ═══════════════════════════════════════════════════
+const tabMeta = {
+  overview:   { title: 'Overview',             sub: 'All platforms · All time' },
+  audience:   { title: 'Audience Tracking',    sub: 'Log and monitor your follower growth' },
+  content:    { title: 'Content Performance',  sub: 'Track posts and engagement metrics' },
+  revenue:    { title: 'Revenue Tracking',     sub: 'Brand deals and income pipeline' },
+  insights:   { title: 'Insights',             sub: 'Auto-computed recommendations' },
+  instagram:  { title: 'Instagram Import',     sub: 'Upload your Instagram data ZIP' },
+  export:     { title: 'Export & Templates',   sub: 'Copy, download, or share your data' },
+};
+
+function switchTab(tab) {
+  document.querySelectorAll('.nav-item').forEach(el => {
+    el.classList.toggle('active', el.dataset.tab === tab);
+  });
+  document.querySelectorAll('.content').forEach(el => {
+    el.classList.toggle('active', el.id === `tab-${tab}`);
+  });
+  const meta = tabMeta[tab];
+  if (meta) {
+    document.getElementById('page-title').textContent = meta.title;
+    document.getElementById('page-sub').textContent = meta.sub;
+  }
+
+  if (tab === 'overview') renderOverview();
+  if (tab === 'insights') renderInsights();
+  if (tab === 'export') renderTemplates();
+}
+
+document.querySelectorAll('.nav-item').forEach(el => {
+  el.addEventListener('click', () => switchTab(el.dataset.tab));
+});
+
+// ═══════════════════════════════════════════════════
+// AUDIENCE
+// ═══════════════════════════════════════════════════
+// Set today's date as default
+document.addEventListener('DOMContentLoaded', () => {
+  const dates = ['aud-date','con-date','rev-date'];
+  dates.forEach(id => { const el = document.getElementById(id); if(el) el.value = today(); });
+});
+
+function addAudience() {
+  const platform    = document.getElementById('aud-platform').value;
+  const followers   = parseFloat(document.getElementById('aud-followers').value);
+  const growth      = parseFloat(document.getElementById('aud-growth').value);
+  const reach       = parseFloat(document.getElementById('aud-reach').value);
+  const impressions = parseFloat(document.getElementById('aud-impressions').value);
+  const date        = document.getElementById('aud-date').value || today();
+
+  if (!followers && followers !== 0) { toast('⚠ Enter follower count', 'error'); return; }
+
+  state.audience.push({ id: uid(), platform, followers, growth: growth||0, reach: reach||0, impressions: impressions||0, date });
+  save();
+  renderAudienceTable();
+  renderOverview();
+  toast('✓ Audience entry logged', 'success');
+
+  // clear inputs
+  ['aud-followers','aud-growth','aud-reach','aud-impressions'].forEach(id => document.getElementById(id).value = '');
+}
+
+function deleteAudience(id) {
+  state.audience = state.audience.filter(e => e.id !== id);
+  save(); renderAudienceTable(); renderOverview();
+  toast('Entry removed');
+}
+
+function renderAudienceTable() {
+  const wrap = document.getElementById('aud-table-wrap');
+  document.getElementById('aud-count').textContent = `${state.audience.length} entries`;
+
+  if (!state.audience.length) {
+    wrap.innerHTML = `<div class="empty-state"><div class="empty-icon">◎</div><div class="empty-text">No entries yet. Log your first audience snapshot.</div></div>`;
+    return;
+  }
+
+  const rows = [...state.audience].reverse().map(e => `
+    <tr>
+      <td>${platformBadge(e.platform)}</td>
+      <td>${fmt(e.followers)}</td>
+      <td style="color:${e.growth >= 0 ? 'var(--accent)' : 'var(--red)'}">${e.growth >= 0 ? '+' : ''}${fmt(e.growth)}</td>
+      <td>${fmt(e.reach)}</td>
+      <td>${fmt(e.impressions)}</td>
+      <td style="color:var(--text-2);font-family:var(--mono);font-size:11px">${e.date}</td>
+      <td><button class="del-btn" onclick="deleteAudience('${e.id}')">✕</button></td>
+    </tr>
+  `).join('');
+
+  wrap.innerHTML = `
+    <table>
+      <thead><tr>
+        <th>Platform</th><th>Followers</th><th>Net Growth</th><th>Reach</th><th>Impressions</th><th>Date</th><th></th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+}
+
+// ═══════════════════════════════════════════════════
+// CONTENT
+// ═══════════════════════════════════════════════════
+function addContent() {
+  const platform = document.getElementById('con-platform').value;
+  const title    = document.getElementById('con-title').value.trim();
+  const views    = parseFloat(document.getElementById('con-views').value) || 0;
+  const likes    = parseFloat(document.getElementById('con-likes').value) || 0;
+  const comments = parseFloat(document.getElementById('con-comments').value) || 0;
+  const shares   = parseFloat(document.getElementById('con-shares').value) || 0;
+  const saves    = parseFloat(document.getElementById('con-saves').value) || 0;
+  const date     = document.getElementById('con-date').value || today();
+
+  if (!title) { toast('⚠ Enter post title', 'error'); return; }
+
+  const post = { id: uid(), platform, title, views, likes, comments, shares, saves, date };
+  post.engRate = engRate(post);
+  state.content.push(post);
+  save();
+  renderContentTable();
+  renderOverview();
+  toast('✓ Post logged', 'success');
+
+  ['con-title','con-views','con-likes','con-comments','con-shares','con-saves'].forEach(id => document.getElementById(id).value = '');
+}
+
+function deleteContent(id) {
+  state.content = state.content.filter(e => e.id !== id);
+  save(); renderContentTable(); renderOverview();
+  toast('Post removed');
+}
+
+function renderContentTable() {
+  const wrap = document.getElementById('con-table-wrap');
+  document.getElementById('con-count').textContent = `${state.content.length} posts`;
+
+  if (!state.content.length) {
+    wrap.innerHTML = `<div class="empty-state"><div class="empty-icon">◇</div><div class="empty-text">No posts logged yet. Add your first post.</div></div>`;
+    return;
+  }
+
+  const rows = [...state.content].reverse().map(p => `
+    <tr>
+      <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis">${p.title}</td>
+      <td>${platformBadge(p.platform)}</td>
+      <td>${fmt(p.views)}</td>
+      <td>${fmt(p.likes)}</td>
+      <td>${fmt(p.comments)}</td>
+      <td>${fmt(p.shares)}</td>
+      <td>${fmt(p.saves)}</td>
+      <td>${engChip(p.engRate)}</td>
+      <td style="color:var(--text-2);font-family:var(--mono);font-size:11px">${p.date}</td>
+      <td><button class="del-btn" onclick="deleteContent('${p.id}')">✕</button></td>
+    </tr>
+  `).join('');
+
+  wrap.innerHTML = `
+    <table>
+      <thead><tr>
+        <th>Title</th><th>Platform</th><th>Views</th><th>Likes</th><th>Comments</th><th>Shares</th><th>Saves</th><th>Eng. Rate</th><th>Date</th><th></th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+}
+
+// ═══════════════════════════════════════════════════
+// REVENUE
+// ═══════════════════════════════════════════════════
+function addRevenue() {
+  const brand    = document.getElementById('rev-brand').value.trim();
+  const platform = document.getElementById('rev-platform').value;
+  const fee      = parseFloat(document.getElementById('rev-fee').value) || 0;
+  const status   = document.getElementById('rev-status').value;
+  const date     = document.getElementById('rev-date').value || today();
+
+  if (!brand) { toast('⚠ Enter brand name', 'error'); return; }
+
+  state.revenue.push({ id: uid(), brand, platform, fee, status, date });
+  save();
+  renderRevenueTable();
+  renderRevStats();
+  renderOverview();
+  toast('✓ Deal logged', 'success');
+
+  document.getElementById('rev-brand').value = '';
+  document.getElementById('rev-fee').value = '';
+}
+
+function deleteRevenue(id) {
+  state.revenue = state.revenue.filter(e => e.id !== id);
+  save(); renderRevenueTable(); renderRevStats(); renderOverview();
+  toast('Deal removed');
+}
+
+function updateStatus(id, status) {
+  const deal = state.revenue.find(e => e.id === id);
+  if (deal) { deal.status = status; save(); renderRevenueTable(); renderRevStats(); renderOverview(); }
+}
+
+function renderRevenueTable() {
+  const wrap = document.getElementById('rev-table-wrap');
+  document.getElementById('rev-count').textContent = `${state.revenue.length} deals`;
+
+  if (!state.revenue.length) {
+    wrap.innerHTML = `<div class="empty-state"><div class="empty-icon">◆</div><div class="empty-text">No deals logged. Add your first brand deal.</div></div>`;
+    return;
+  }
+
+  const rows = [...state.revenue].reverse().map(d => `
+    <tr>
+      <td>${d.brand}</td>
+      <td>${platformBadge(d.platform)}</td>
+      <td style="color:var(--gold);font-family:var(--mono)">${money(d.fee)}</td>
+      <td>
+        <select onchange="updateStatus('${d.id}', this.value)"
+          style="background:var(--bg-2);border:1px solid var(--border-bright);border-radius:6px;padding:4px 8px;color:var(--text-0);font-size:12px;font-family:var(--mono);cursor:pointer;outline:none"
+        >
+          ${['pitched','negotiating','booked','paid'].map(s => `<option value="${s}" ${d.status===s?'selected':''}>${s.charAt(0).toUpperCase()+s.slice(1)}</option>`).join('')}
+        </select>
+      </td>
+      <td style="color:var(--text-2);font-family:var(--mono);font-size:11px">${d.date}</td>
+      <td><button class="del-btn" onclick="deleteRevenue('${d.id}')">✕</button></td>
+    </tr>
+  `).join('');
+
+  wrap.innerHTML = `
+    <table>
+      <thead><tr>
+        <th>Brand</th><th>Platform</th><th>Fee</th><th>Status</th><th>Date</th><th></th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+}
+
+function renderRevStats() {
+  const total    = state.revenue.reduce((a,d) => a + (d.fee||0), 0);
+  const paid     = state.revenue.filter(d=>d.status==='paid').reduce((a,d) => a+(d.fee||0), 0);
+  const pipeline = state.revenue.filter(d=>d.status!=='paid').reduce((a,d) => a+(d.fee||0), 0);
+  const deals    = state.revenue.length;
+
+  document.getElementById('rev-stats').innerHTML = `
+    <div class="stat-card">
+      <div class="stat-label">Total Value</div>
+      <div class="stat-value" style="color:var(--gold)">${money(total)}</div>
+      <div class="stat-meta">${deals} deal${deals!==1?'s':''}</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Paid / Collected</div>
+      <div class="stat-value" style="color:#80e060">${money(paid)}</div>
+      <div class="stat-meta">${state.revenue.filter(d=>d.status==='paid').length} paid</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Open Pipeline</div>
+      <div class="stat-value" style="color:var(--accent)">${money(pipeline)}</div>
+      <div class="stat-meta">${state.revenue.filter(d=>d.status!=='paid').length} active</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Avg Deal Size</div>
+      <div class="stat-value">${deals ? money(Math.round(total/deals)) : '—'}</div>
+      <div class="stat-meta">across all deals</div>
+    </div>
+  `;
+}
+
+// ═══════════════════════════════════════════════════
+// OVERVIEW
+// ═══════════════════════════════════════════════════
+function renderOverview() {
+  // ── Stat cards
+  const totalFollowers = state.audience.reduce((a,e) => a + (e.followers||0), 0);
+  const totalGrowth    = state.audience.reduce((a,e) => a + (e.growth||0), 0);
+  const totalRevenue   = state.revenue.reduce((a,d) => a + (d.fee||0), 0);
+  const avgEng         = state.content.length
+    ? state.content.reduce((a,p) => a + p.engRate, 0) / state.content.length
+    : null;
+
+  document.getElementById('overview-stats').innerHTML = `
+    <div class="stat-card">
+      <div class="stat-label">Total Followers</div>
+      <div class="stat-value">${totalFollowers ? fmt(totalFollowers) : '—'}</div>
+      <div class="stat-meta">across all platforms</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Net Growth</div>
+      <div class="stat-value ${totalGrowth>0?'stat-up':totalGrowth<0?'stat-down':''}">
+        ${state.audience.length ? (totalGrowth >= 0 ? '+' : '') + fmt(totalGrowth) : '—'}
+      </div>
+      <div class="stat-meta">total across entries</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Revenue Pipeline</div>
+      <div class="stat-value stat-neutral">${totalRevenue ? money(totalRevenue) : '—'}</div>
+      <div class="stat-meta">${state.revenue.length} deal${state.revenue.length!==1?'s':''} logged</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Avg Engagement</div>
+      <div class="stat-value ${avgEng!=null ? (avgEng>=5?'stat-up':avgEng>=2?'stat-neutral':'stat-down') : ''}">
+        ${avgEng != null ? pct(avgEng) : '—'}
+      </div>
+      <div class="stat-meta">${state.content.length} posts tracked</div>
+    </div>
+  `;
+
+  // ── Top content
+  const topList = document.getElementById('top-content-list');
+  const sorted = [...state.content].sort((a,b) => b.engRate - a.engRate).slice(0,5);
+  if (!sorted.length) {
+    topList.innerHTML = `<div class="empty-state"><div class="empty-icon">◇</div><div class="empty-text">No content logged yet</div></div>`;
+  } else {
+    topList.innerHTML = sorted.map((p,i) => `
+      <div class="top-content-item">
+        <div class="top-content-rank">#${i+1}</div>
+        <div class="top-content-info">
+          <div class="top-content-title">${p.title}</div>
+          <div class="top-content-meta">${p.platform} · ${fmt(p.views)} views</div>
+        </div>
+        <div class="top-content-eng">${pct(p.engRate)}</div>
+      </div>
+    `).join('');
+  }
+
+  // ── Platform bars
+  const platformBars = document.getElementById('platform-bars');
+  const platMap = {};
+  state.audience.forEach(e => { platMap[e.platform] = (platMap[e.platform]||0) + (e.followers||0); });
+  const platEntries = Object.entries(platMap).sort((a,b) => b[1]-a[1]);
+  const maxF = platEntries[0]?.[1] || 1;
+
+  const platColors = { Instagram:'#e080e0', TikTok:'#ff8070', YouTube:'#ff6060', 'Twitter/X':'#60d0f0', LinkedIn:'#80b0f0', 'Multi-platform': '#00e5c3' };
+
+  if (!platEntries.length) {
+    platformBars.innerHTML = `<div class="empty-state"><div class="empty-icon">◎</div><div class="empty-text">No audience data yet</div></div>`;
+  } else {
+    platformBars.innerHTML = platEntries.map(([plat, val]) => `
+      <div class="platform-row">
+        <div class="platform-name">${plat}</div>
+        <div class="bar-track">
+          <div class="bar-fill" style="width:${(val/maxF*100).toFixed(1)}%;background:${platColors[plat]||'var(--accent)'}"></div>
+        </div>
+        <div class="platform-val">${fmt(val)}</div>
+      </div>
+    `).join('');
+  }
+
+  // ── Pipeline
+  const statuses = ['pitched','negotiating','booked','paid'];
+  statuses.forEach(s => {
+    const count = state.revenue.filter(d => d.status === s).length;
+    document.getElementById(`pipe-${s}`).textContent = count;
+  });
+}
+
+// ═══════════════════════════════════════════════════
+// INSIGHTS
+// ═══════════════════════════════════════════════════
+function renderInsights() {
+  const body = document.getElementById('insights-body');
+  const hasData = state.content.length || state.audience.length;
+
+  if (!hasData) {
+    body.innerHTML = `<div class="empty-state" style="padding:60px 24px;"><div class="empty-icon">◉</div><div class="empty-text">Log audience & content data to generate insights</div></div>`;
+    return;
+  }
+
+  // ── Best / worst content
+  const sorted = [...state.content].sort((a,b) => b.engRate - a.engRate);
+  const best = sorted[0];
+  const worst = sorted[sorted.length - 1];
+
+  // ── Platform comparison
+  const platEng = {};
+  const platCount = {};
+  state.content.forEach(p => {
+    platEng[p.platform]   = (platEng[p.platform]||0) + p.engRate;
+    platCount[p.platform] = (platCount[p.platform]||0) + 1;
+  });
+  const platAvg = Object.entries(platEng).map(([p,total]) => [p, total/platCount[p]]).sort((a,b)=>b[1]-a[1]);
+  const bestPlat = platAvg[0];
+  const worstPlat = platAvg[platAvg.length-1];
+
+  // ── Revenue insight
+  const paidRevenue = state.revenue.filter(d=>d.status==='paid').reduce((a,d)=>a+(d.fee||0),0);
+  const openRevenue = state.revenue.filter(d=>d.status!=='paid').reduce((a,d)=>a+(d.fee||0),0);
+
+  // ── Growth insight
+  const totalGrowth = state.audience.reduce((a,e)=>a+(e.growth||0),0);
+
+  // ── Generate working / not working / actions
+  const working = [];
+  const notWorking = [];
+  const actions = [];
+
+  if (best) working.push(`Your top post "${best.title}" is hitting ${pct(best.engRate)} engagement — well above average. Keep this format or topic consistent.`);
+  if (bestPlat) working.push(`${bestPlat[0]} is your strongest platform with an average ${pct(bestPlat[1])} engagement rate.`);
+  if (paidRevenue > 0) working.push(`You've collected ${money(paidRevenue)} in paid deals — your monetization is converting.`);
+  if (totalGrowth > 0) working.push(`Net follower growth is positive (${fmt(totalGrowth)}) across your tracked entries.`);
+  if (working.length < 3) working.push('Keep logging data to surface more patterns.');
+
+  if (worst && sorted.length > 1) notWorking.push(`"${worst.title}" is your lowest performer at ${pct(worst.engRate)} engagement. Consider revisiting the hook or format.`);
+  if (worstPlat && platAvg.length > 1) notWorking.push(`${worstPlat[0]} shows your weakest engagement (${pct(worstPlat[1])} avg). Consider posting less here or adjusting strategy.`);
+  if (totalGrowth < 0) notWorking.push(`Net follower growth is negative (${fmt(totalGrowth)}). Review posting frequency and content quality.`);
+  if (openRevenue > 0) notWorking.push(`${money(openRevenue)} is still in your pipeline — follow up on open deals to close revenue faster.`);
+  if (notWorking.length < 3) notWorking.push('Not enough data yet — keep logging to surface weak spots.');
+
+  if (bestPlat) actions.push(`Double down on ${bestPlat[0]} — it has your best engagement. Increase posting frequency there.`);
+  if (best) actions.push(`Repurpose "${best.title}" for other platforms to maximize its reach and extract more value.`);
+  if (openRevenue > 0) actions.push(`Follow up on your ${state.revenue.filter(d=>d.status!=='paid').length} open deal${state.revenue.filter(d=>d.status!=='paid').length!==1?'s':''} totaling ${money(openRevenue)} — send a status update this week.`);
+  if (actions.length < 3) actions.push('Log more content and audience data to get actionable next steps.');
+
+  const insightBlock = (label, items, dotClass) => `
+    <div class="insight-section">
+      <div class="insight-label">${label}</div>
+      <div class="insight-list">
+        ${items.slice(0,3).map(item => `
+          <div class="insight-item">
+            <div class="insight-dot ${dotClass}"></div>
+            <div>${item}</div>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `;
+
+  // Platform comparison table
+  const platTable = platAvg.length ? `
+    <div class="card" style="margin-bottom:20px">
+      <div class="card-header"><div class="card-title">Platform Comparison</div></div>
+      <div class="card-body" style="padding:0">
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Platform</th><th>Posts</th><th>Avg Engagement</th><th>Rating</th></tr></thead>
+            <tbody>
+              ${platAvg.map(([p,avg]) => `
+                <tr>
+                  <td>${platformBadge(p)}</td>
+                  <td style="color:var(--text-2);font-family:var(--mono)">${platCount[p]}</td>
+                  <td>${engChip(avg)}</td>
+                  <td style="color:var(--text-2);font-size:12px">${avg>=5?'🔥 Strong':avg>=2?'⚡ Average':'📉 Weak'}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  ` : '';
+
+  body.innerHTML = `
+    ${platTable}
+    <div class="grid-3" style="margin-bottom:20px">
+      <div>${insightBlock('✓ What\'s Working', working, 'dot-green')}</div>
+      <div>${insightBlock('✕ What\'s Not Working', notWorking, 'dot-red')}</div>
+      <div>${insightBlock('→ Actions to Take', actions, 'dot-gold')}</div>
+    </div>
+  `;
+}
+
+// ═══════════════════════════════════════════════════
+// TEMPLATES
+// ═══════════════════════════════════════════════════
+function renderTemplates() {
+  const totalFollowers = state.audience.reduce((a,e) => a+(e.followers||0),0);
+  const avgEng         = state.content.length ? (state.content.reduce((a,p)=>a+p.engRate,0)/state.content.length).toFixed(2) : 'N/A';
+  const paidRev        = state.revenue.filter(d=>d.status==='paid').reduce((a,d)=>a+(d.fee||0),0);
+  const best5          = [...state.content].sort((a,b)=>b.engRate-a.engRate).slice(0,3);
+  const platforms      = [...new Set(state.audience.map(e=>e.platform))].join(', ') || 'Not tracked';
+
+  const aiTpl = `=== CREATOR ANALYTICS BRIEF FOR AI ANALYSIS ===
+Generated: ${new Date().toLocaleDateString()}
+
+AUDIENCE OVERVIEW
+-----------------
+Total Followers: ${fmt(totalFollowers) || 'N/A'}
+Platforms: ${platforms}
+Total Audience Entries: ${state.audience.length}
+${state.audience.map(e=>`• ${e.platform}: ${fmt(e.followers)} followers, ${e.growth>=0?'+':''}${fmt(e.growth)} growth (${e.date})`).join('\n')}
+
+CONTENT PERFORMANCE
+-------------------
+Posts Tracked: ${state.content.length}
+Average Engagement Rate: ${avgEng}%
+${best5.length ? `\nTop Performing Posts:\n${best5.map((p,i)=>`${i+1}. "${p.title}" [${p.platform}] — ${pct(p.engRate)} eng, ${fmt(p.views)} views`).join('\n')}` : ''}
+
+REVENUE
+-------
+Total Pipeline Value: ${money(state.revenue.reduce((a,d)=>a+(d.fee||0),0))}
+Paid / Collected: ${money(paidRev)}
+Deals: ${state.revenue.length}
+${state.revenue.map(d=>`• ${d.brand} [${d.platform}] — ${money(d.fee)} (${d.status})`).join('\n')}
+
+TASK: Analyze this creator's performance. Identify growth opportunities, flag underperforming areas, and suggest 5 concrete actions to improve results in the next 30 days.`;
+
+  const weeklyTpl = `=== WEEKLY CREATOR REPORT ===
+Week of: ${new Date().toLocaleDateString()}
+
+HIGHLIGHTS
+• Platforms: ${platforms}
+• Total Followers: ${fmt(totalFollowers) || 'N/A'}
+• Avg Engagement This Period: ${avgEng}%
+• Revenue Collected: ${money(paidRev)}
+
+TOP CONTENT
+${best5.length ? best5.map((p,i)=>`${i+1}. ${p.title} — ${pct(p.engRate)} engagement`).join('\n') : 'No posts logged'}
+
+GOALS FOR NEXT WEEK
+□ 
+□ 
+□ 
+
+NOTES
+
+
+`;
+
+  const topFollowers = totalFollowers;
+  const pitchTpl = `Hi [Brand Name] Team,
+
+I'm reaching out about a potential partnership.
+
+ABOUT ME
+I create content on ${platforms} with a combined audience of ${fmt(topFollowers) || '[X]'} followers and an average engagement rate of ${avgEng}%, well above the industry average of 1–3%.
+
+WHY WE'RE A FIT
+[Describe alignment with brand values/audience]
+
+DELIVERABLES I CAN OFFER
+• [Deliverable 1, e.g. 1 dedicated Instagram Reel]
+• [Deliverable 2, e.g. 3 story slides]
+• [Deliverable 3, e.g. 1 TikTok]
+
+MY RATES START AT
+$[Your rate] for a campaign package
+
+I'd love to hop on a 15-minute call to discuss further. Let me know what works for you.
+
+Best,
+[Your Name]
+[Links to your best content]`;
+
+  document.getElementById('ai-template').textContent = aiTpl;
+  document.getElementById('weekly-template').textContent = weeklyTpl;
+  document.getElementById('pitch-template').textContent = pitchTpl;
+}
+
+function copyTemplate(type) {
+  const el = document.getElementById(`${type}-template`);
+  navigator.clipboard.writeText(el.textContent).then(() => toast('✓ Copied to clipboard', 'success'));
+}
+
+// ═══════════════════════════════════════════════════
+// EXPORT / IMPORT
+// ═══════════════════════════════════════════════════
+function downloadJSON() {
+  const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `creator-os-${today()}.json`;
+  a.click(); URL.revokeObjectURL(url);
+  toast('✓ JSON downloaded', 'success');
+}
+
+function downloadCSV(type) {
+  let rows = [], headers = [];
+  if (type === 'audience') {
+    headers = ['Platform','Followers','Net Growth','Reach','Impressions','Date'];
+    rows = state.audience.map(e => [e.platform, e.followers, e.growth, e.reach, e.impressions, e.date]);
+  } else if (type === 'content') {
+    headers = ['Title','Platform','Views','Likes','Comments','Shares','Saves','Engagement Rate (%)','Date'];
+    rows = state.content.map(p => [p.title, p.platform, p.views, p.likes, p.comments, p.shares, p.saves, p.engRate.toFixed(2), p.date]);
+  } else if (type === 'revenue') {
+    headers = ['Brand','Platform','Fee','Status','Date'];
+    rows = state.revenue.map(d => [d.brand, d.platform, d.fee, d.status, d.date]);
+  }
+
+  const csv = [headers, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `creator-${type}-${today()}.csv`;
+  a.click(); URL.revokeObjectURL(url);
+  toast(`✓ ${type} CSV downloaded`, 'success');
+}
+
+function importJSON() { document.getElementById('import-file').click(); }
+
+function handleImport(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const imported = JSON.parse(e.target.result);
+      if (imported.audience || imported.content || imported.revenue) {
+        state.audience = imported.audience || [];
+        state.content  = imported.content  || [];
+        state.revenue  = imported.revenue  || [];
+        // recalc engagement rates
+        state.content.forEach(p => { if (!p.engRate) p.engRate = engRate(p); });
+        save();
+        renderAudienceTable();
+        renderContentTable();
+        renderRevenueTable();
+        renderRevStats();
+        renderOverview();
+        toast('✓ Data imported successfully', 'success');
+      } else {
+        toast('⚠ Invalid file format', 'error');
+      }
+    } catch {
+      toast('⚠ Could not parse file', 'error');
+    }
+  };
+  reader.readAsText(file);
+  event.target.value = '';
+}
+
+// ═══════════════════════════════════════════════════
+// INSTAGRAM ZIP IMPORT
+// ═══════════════════════════════════════════════════
+function handleZipDrop(event) {
+  event.preventDefault();
+  const dz = document.getElementById('ig-dropzone');
+  dz.style.borderColor = 'var(--border-bright)';
+  dz.style.background = 'var(--bg-2)';
+  const file = event.dataTransfer.files[0];
+  if (file && file.name.endsWith('.zip')) {
+    handleZipFile(file);
+  } else {
+    toast('⚠ Please drop a .zip file', 'error');
+  }
+}
+
+async function handleZipFile(file) {
+  if (!file) return;
+  toast('⏳ Reading ZIP file...');
+
+  try {
+    const zip = await JSZip.loadAsync(file);
+    const log = [];
+    let followers = [], following = [], posts = [], unfollowed = [];
+
+    // helper to find & parse a JSON file anywhere in the zip
+    async function readJSON(namePart) {
+      const key = Object.keys(zip.files).find(k =>
+        k.toLowerCase().includes(namePart) && k.endsWith('.json') && !zip.files[k].dir
+      );
+      if (!key) return null;
+      try {
+        const text = await zip.files[key].async('string');
+        return JSON.parse(text);
+      } catch { return null; }
+    }
+
+    // ── FOLLOWERS
+    const followersData = await readJSON('followers_1');
+    if (followersData && Array.isArray(followersData)) {
+      followers = followersData.map(e => ({
+        username: e.string_list_data?.[0]?.value || '',
+        timestamp: e.string_list_data?.[0]?.timestamp || 0
+      }));
+      log.push({ ok: true, msg: `Found ${followers.length} followers` });
+    } else {
+      log.push({ ok: false, msg: 'followers_1.json not found' });
+    }
+
+    // ── FOLLOWING
+    const followingData = await readJSON('following');
+    if (followingData) {
+      const arr = followingData.relationships_following || followingData;
+      if (Array.isArray(arr)) {
+        following = arr.map(e => ({
+          username: e.string_list_data?.[0]?.value || '',
+          timestamp: e.string_list_data?.[0]?.timestamp || 0
+        }));
+        log.push({ ok: true, msg: `Found ${following.length} following` });
+      }
+    } else {
+      log.push({ ok: false, msg: 'following.json not found' });
+    }
+
+    // ── POSTS
+    const postsData = await readJSON('posts_1');
+    if (postsData && Array.isArray(postsData)) {
+      posts = postsData.map(p => ({
+        title: p.title || 'Untitled post',
+        timestamp: p.creation_timestamp || 0,
+        mediaCount: p.media ? p.media.length : 1,
+        type: p.media?.some(m => m.uri?.endsWith('.mp4')) ? 'Reel/Video' : p.media?.length > 1 ? 'Carousel' : 'Photo'
+      }));
+      log.push({ ok: true, msg: `Found ${posts.length} posts` });
+    } else {
+      log.push({ ok: false, msg: 'posts_1.json not found' });
+    }
+
+    // ── UNFOLLOWED
+    const unfollowedData = await readJSON('recently_unfollowed');
+    if (unfollowedData?.relationships_unfollowed_users) {
+      unfollowed = unfollowedData.relationships_unfollowed_users.map(e => ({
+        username: e.string_list_data?.[0]?.value || '',
+        timestamp: e.string_list_data?.[0]?.timestamp || 0
+      }));
+      log.push({ ok: true, msg: `Found ${unfollowed.length} recent unfollows` });
+    }
+
+    // ── BUILD AUDIENCE ENTRY
+    if (followers.length > 0) {
+      const netGrowth = followers.length - unfollowed.length;
+      // Find most recent follower date
+      const latestTs = Math.max(...followers.map(f => f.timestamp));
+      const entryDate = latestTs ? new Date(latestTs * 1000).toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
+
+      // Check if we already have an IG entry from this import
+      const existingIdx = state.audience.findIndex(a => a.platform === 'Instagram' && a._fromImport);
+      const entry = {
+        id: existingIdx >= 0 ? state.audience[existingIdx].id : uid(),
+        platform: 'Instagram',
+        followers: followers.length,
+        growth: netGrowth,
+        reach: 0,
+        impressions: 0,
+        date: entryDate,
+        _fromImport: true,
+        _following: following.length
+      };
+
+      if (existingIdx >= 0) {
+        state.audience[existingIdx] = entry;
+      } else {
+        state.audience.push(entry);
+      }
+      log.push({ ok: true, msg: `Audience entry created: ${followers.length} followers, ${netGrowth >= 0 ? '+' : ''}${netGrowth} net growth` });
+    }
+
+    // ── BUILD CONTENT ENTRIES from posts
+    if (posts.length > 0) {
+      // Remove previously imported IG posts
+      state.content = state.content.filter(c => !c._fromImport);
+
+      posts.forEach(p => {
+        const dateStr = p.timestamp ? new Date(p.timestamp * 1000).toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
+        const post = {
+          id: uid(),
+          platform: 'Instagram',
+          title: p.title || 'Untitled post',
+          views: 0, likes: 0, comments: 0, shares: 0, saves: 0,
+          date: dateStr,
+          engRate: 0,
+          _fromImport: true,
+          _type: p.type,
+          _mediaCount: p.mediaCount
+        };
+        state.content.push(post);
+      });
+      log.push({ ok: true, msg: `${posts.length} posts added to Content tab (add likes/views manually)` });
+    }
+
+    save();
+    renderAudienceTable();
+    renderContentTable();
+    renderOverview();
+
+    // ── SHOW RESULT
+    const card = document.getElementById('ig-result-card');
+    const body = document.getElementById('ig-result-body');
+    card.style.display = 'block';
+
+    // Stats summary
+    body.innerHTML = `
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin-bottom:20px">
+        <div class="stat-card">
+          <div class="stat-label">Followers</div>
+          <div class="stat-value" style="color:var(--accent)">${followers.length}</div>
+          <div class="stat-meta">imported</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Following</div>
+          <div class="stat-value">${following.length}</div>
+          <div class="stat-meta">accounts</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Posts</div>
+          <div class="stat-value">${posts.length}</div>
+          <div class="stat-meta">imported</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Net Growth</div>
+          <div class="stat-value ${followers.length - unfollowed.length >= 0 ? 'stat-up' : 'stat-down'}">
+            ${followers.length - unfollowed.length >= 0 ? '+' : ''}${followers.length - unfollowed.length}
+          </div>
+          <div class="stat-meta">vs unfollowed</div>
+        </div>
+      </div>
+
+      <div style="margin-bottom:16px">
+        <div class="insight-label">Import Log</div>
+        <div class="insight-list">
+          ${log.map(l => `
+            <div class="insight-item">
+              <div class="insight-dot ${l.ok ? 'dot-green' : 'dot-red'}"></div>
+              <div style="font-size:13px">${l.msg}</div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+
+      ${posts.length ? `
+        <div class="divider"></div>
+        <div style="margin-bottom:10px">
+          <div class="insight-label">Posts Imported</div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Title</th><th>Type</th><th>Date</th><th>Media</th></tr></thead>
+            <tbody>
+              ${posts.map(p => `
+                <tr>
+                  <td>${p.title || 'Untitled'}</td>
+                  <td><span class="badge badge-ig">${p.type}</span></td>
+                  <td style="color:var(--text-2);font-family:var(--mono);font-size:11px">${p.timestamp ? new Date(p.timestamp*1000).toLocaleDateString() : '—'}</td>
+                  <td style="color:var(--text-2);font-family:var(--mono)">${p.mediaCount} file${p.mediaCount!==1?'s':''}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+        <div style="margin-top:14px;padding:12px 16px;background:var(--accent-dim);border:1px solid var(--accent-mid);border-radius:var(--radius-sm);font-size:12px;color:var(--accent);font-family:var(--mono)">
+          → Go to the Content tab to add likes, views, and comments for each post
+        </div>
+      ` : ''}
+    `;
+
+    toast('✓ Instagram data imported!', 'success');
+
+  } catch (err) {
+    toast('⚠ Could not read ZIP file', 'error');
+    console.error(err);
+  }
+}
+
+// ═══════════════════════════════════════════════════
+// CLEAR ALL
+
+// ═══════════════════════════════════════════════════
+function clearAllData() {
+  if (!confirm('Reset all data? This cannot be undone.')) return;
+  state = { audience: [], content: [], revenue: [] };
+  save();
+  renderAudienceTable();
+  renderContentTable();
+  renderRevenueTable();
+  renderRevStats();
+  renderOverview();
+  toast('All data cleared');
+}
+
+// ═══════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════
+load();
+renderAudienceTable();
+renderContentTable();
+renderRevenueTable();
+renderRevStats();
+renderOverview();
+</script>
+</body>
+</html>
