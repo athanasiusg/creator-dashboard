@@ -1394,9 +1394,9 @@ function renderOverview() {
     ? state.content.reduce((a,p) => a + p.engRate, 0) / state.content.length
     : null;
   const totalPosts     = state.content.length;
-  const platMap = {};
-  state.audience.forEach(e => { platMap[e.platform] = (platMap[e.platform]||0) + (e.followers||0); });
-  const topPlatform = Object.entries(platMap).sort((a,b)=>b[1]-a[1])[0];
+  const platMapOv = {};
+  state.audience.forEach(e => { platMapOv[e.platform] = (platMapOv[e.platform]||0) + (e.followers||0); });
+  const topPlatform = Object.entries(platMapOv).sort((a,b)=>b[1]-a[1])[0];
 
   document.getElementById('overview-stats').innerHTML = `
     <div class="stat-card">
@@ -1443,9 +1443,9 @@ function renderOverview() {
 
   // ── Platform bars
   const platformBars = document.getElementById('platform-bars');
-  const platMap = {};
-  state.audience.forEach(e => { platMap[e.platform] = (platMap[e.platform]||0) + (e.followers||0); });
-  const platEntries = Object.entries(platMap).sort((a,b) => b[1]-a[1]);
+  const platMapBars = {};
+  state.audience.forEach(e => { platMapBars[e.platform] = (platMapBars[e.platform]||0) + (e.followers||0); });
+  const platEntries = Object.entries(platMapBars).sort((a,b) => b[1]-a[1]);
   const maxF = platEntries[0]?.[1] || 1;
 
   const platColors = { Instagram:'#e080e0', TikTok:'#ff8070', YouTube:'#ff6060', 'Twitter/X':'#60d0f0', LinkedIn:'#80b0f0', 'Multi-platform': '#00e5c3' };
