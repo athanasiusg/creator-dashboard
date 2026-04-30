@@ -435,6 +435,51 @@
   /* ── EXPORT BAR ── */
   .export-bar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; }
 
+  /* ── MOBILE BOTTOM NAV ── */
+  .mobile-nav {
+    display: none;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: var(--bg-1);
+    border-top: 1px solid var(--border);
+    z-index: 100;
+    padding: 8px 0 max(8px, env(safe-area-inset-bottom));
+  }
+
+  .mobile-nav-inner {
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+  }
+
+  .mobile-nav-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    padding: 4px 8px;
+    cursor: pointer;
+    border-radius: var(--radius-sm);
+    transition: all 0.12s;
+    min-width: 44px;
+  }
+
+  .mobile-nav-item .mn-icon { font-size: 16px; opacity: 0.4; }
+  .mobile-nav-item .mn-label { font-size: 9px; font-family: var(--mono); color: var(--text-2); letter-spacing: 0.3px; }
+  .mobile-nav-item.active .mn-icon { opacity: 1; }
+  .mobile-nav-item.active .mn-label { color: var(--text-0); font-weight: 600; }
+
+  @media (max-width: 900px) {
+    .mobile-nav { display: block; }
+    .main { padding-bottom: 70px; }
+    .content { padding: 16px; }
+    .grid-2, .grid-3 { grid-template-columns: 1fr; }
+    .sidebar { display: none; }
+    .topbar { padding: 12px 16px; }
+  }
+
   /* ── COPY-BTN-ABS ── */
   .copy-btn-abs { position: absolute; top: 10px; right: 10px; }
 </style>
@@ -913,6 +958,36 @@
   </div><!-- /main -->
 </div><!-- /shell -->
 
+<!-- MOBILE BOTTOM NAV -->
+<div class="mobile-nav">
+  <div class="mobile-nav-inner">
+    <div class="mobile-nav-item active" data-tab="overview">
+      <span class="mn-icon">◈</span>
+      <span class="mn-label">Overview</span>
+    </div>
+    <div class="mobile-nav-item" data-tab="content">
+      <span class="mn-icon">◇</span>
+      <span class="mn-label">Content</span>
+    </div>
+    <div class="mobile-nav-item" data-tab="audience">
+      <span class="mn-icon">◎</span>
+      <span class="mn-label">Audience</span>
+    </div>
+    <div class="mobile-nav-item" data-tab="instagram">
+      <span class="mn-icon">◈</span>
+      <span class="mn-label">Instagram</span>
+    </div>
+    <div class="mobile-nav-item" data-tab="insights">
+      <span class="mn-icon">◉</span>
+      <span class="mn-label">Insights</span>
+    </div>
+    <div class="mobile-nav-item" data-tab="export">
+      <span class="mn-icon">▷</span>
+      <span class="mn-label">Export</span>
+    </div>
+  </div>
+</div>
+
 <!-- TOAST CONTAINER -->
 <div class="toast-container" id="toast-container"></div>
 
@@ -1121,6 +1196,9 @@ function switchTab(tab) {
   document.querySelectorAll('.nav-item').forEach(el => {
     el.classList.toggle('active', el.dataset.tab === tab);
   });
+  document.querySelectorAll('.mobile-nav-item').forEach(el => {
+    el.classList.toggle('active', el.dataset.tab === tab);
+  });
   document.querySelectorAll('.content').forEach(el => {
     el.classList.toggle('active', el.id === `tab-${tab}`);
   });
@@ -1143,7 +1221,7 @@ function switchTab(tab) {
   }
 }
 
-document.querySelectorAll('.nav-item').forEach(el => {
+document.querySelectorAll('.nav-item, .mobile-nav-item').forEach(el => {
   el.addEventListener('click', () => switchTab(el.dataset.tab));
 });
 
